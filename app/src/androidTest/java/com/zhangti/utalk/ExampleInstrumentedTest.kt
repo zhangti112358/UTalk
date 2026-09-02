@@ -1,4 +1,4 @@
-package com.zhangti.talk2computer2
+package com.zhangti.utalk
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.zhangti.talk2computer2", appContext.packageName)
+        assertEquals("com.zhangti.utalk", appContext.packageName)
     }
 }

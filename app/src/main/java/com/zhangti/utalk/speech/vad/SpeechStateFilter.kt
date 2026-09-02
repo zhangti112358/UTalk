@@ -1,4 +1,4 @@
-package com.zhangti.talk2computer2.speech.vad
+package com.zhangti.utalk.speech.vad
 
 /**
  * 连续语音状态过滤：对模型逐帧预测结果做迟滞（hysteresis），

@@ -1,4 +1,4 @@
-package com.zhangti.talk2computer2.speech.vad
+package com.zhangti.utalk.speech.vad
 
 /**
  * VAD 支持的音频采样率（Hz）。Silero VAD 模型仅支持 8kHz 与 16kHz。

@@ -29,5 +29,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Talk2Computer2"
+rootProject.name = "UTalk"
 include(":app")

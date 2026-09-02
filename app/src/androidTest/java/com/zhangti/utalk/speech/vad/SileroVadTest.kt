@@ -1,4 +1,4 @@
-package com.zhangti.talk2computer2.speech.vad
+package com.zhangti.utalk.speech.vad
 
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4

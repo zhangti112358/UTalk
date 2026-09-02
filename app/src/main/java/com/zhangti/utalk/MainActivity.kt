@@ -1,4 +1,4 @@
-package com.zhangti.talk2computer2
+package com.zhangti.utalk
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Talk2Computer",
+                            text = "UTalk",
                             style = MaterialTheme.typography.headlineMedium
                         )
                         Spacer(Modifier.height(12.dp))

@@ -1,4 +1,4 @@
-package com.zhangti.talk2computer2.speech.vad
+package com.zhangti.utalk.speech.vad
 
 /**
  * 音频数据转换与帧数计算工具。

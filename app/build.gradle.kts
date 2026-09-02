@@ -19,7 +19,7 @@ val localConfigJson = secrets.stringPropertyNames()
     }
 
 android {
-    namespace = "com.zhangti.talk2computer2"
+    namespace = "com.zhangti.utalk"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.zhangti.talk2computer2"
+        applicationId = "com.zhangti.utalk"
         minSdk = 28
         targetSdk = 36
         versionCode = 1

@@ -1,4 +1,4 @@
-package com.zhangti.talk2computer2
+package com.zhangti.utalk
 
 /**
  * 所有本地密钥的名字集中在这里，与 secrets.properties 里的 key 一一对应。
