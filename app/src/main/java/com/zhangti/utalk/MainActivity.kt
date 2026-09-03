@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.zhangti.utalk.speech.asr.AsrTestActivity
+import com.zhangti.utalk.speech.tts.TtsTestActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -58,6 +59,12 @@ class MainActivity : ComponentActivity() {
                             startActivity(Intent(this@MainActivity, AsrTestActivity::class.java))
                         }) {
                             Text("测试 ASR")
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = {
+                            startActivity(Intent(this@MainActivity, TtsTestActivity::class.java))
+                        }) {
+                            Text("测试 TTS")
                         }
                     }
                 }
