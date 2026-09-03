@@ -74,6 +74,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     // Silero VAD 推理引擎（speech/vad）
     implementation(libs.onnxruntime.android)
+    // 豆包 ASR WebSocket 客户端（speech/asr）
+    implementation(libs.okhttp)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)

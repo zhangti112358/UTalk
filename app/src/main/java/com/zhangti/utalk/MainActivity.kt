@@ -1,8 +1,10 @@
 package com.zhangti.utalk
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.zhangti.utalk.speech.asr.AsrTestActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +52,12 @@ class MainActivity : ComponentActivity() {
                         Spacer(Modifier.height(24.dp))
                         Button(onClick = { count++ }) {
                             Text("点击了 $count 次")
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = {
+                            startActivity(Intent(this@MainActivity, AsrTestActivity::class.java))
+                        }) {
+                            Text("测试 ASR")
                         }
                     }
                 }

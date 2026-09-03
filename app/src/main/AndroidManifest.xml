@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 豆包流式 ASR 测试页（麦克风） -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 豆包 ASR / DeepSeek 等网络请求 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -21,6 +26,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".speech.asr.AsrTestActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UTalk" />
     </application>
 
 </manifest>
