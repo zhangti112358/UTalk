@@ -76,6 +76,8 @@ dependencies {
     implementation(libs.onnxruntime.android)
     // 豆包 ASR WebSocket 客户端（speech/asr）
     implementation(libs.okhttp)
+    // MCP 协议类型（agent/tool 统一工具抽象）
+    implementation(libs.mcp.kotlin.sdk.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
