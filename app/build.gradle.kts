@@ -58,6 +58,10 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        // JVM 单测里访问 android.util.Log 等 stub 时静默返回，而不是抛异常
+        unitTests.isReturnDefaultValues = true
+    }
     // onnx 模型不压缩，便于直接读取
     androidResources {
         noCompress += "onnx"
@@ -76,8 +80,13 @@ dependencies {
     implementation(libs.onnxruntime.android)
     // 豆包 ASR WebSocket 客户端（speech/asr）
     implementation(libs.okhttp)
-    // MCP 协议类型（agent/tool 统一工具抽象）
+    // MCP 协议类型与客户端（agent/tool 统一工具抽象 + 远程 MCP 调用）
     implementation(libs.mcp.kotlin.sdk.core)
+    implementation(libs.mcp.kotlin.sdk.client)
+    // Ktor HTTP 引擎（MCP Streamable HTTP 传输需要，SDK 不内置引擎）
+    implementation(libs.ktor.client.okhttp)
+    // JVM 单测里 org.json 是 Android stub（keys() 返回 null），用真实实现替代
+    testImplementation(libs.org.json)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
