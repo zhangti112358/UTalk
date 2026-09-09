@@ -14,6 +14,7 @@ okhttp = "4.12.0"
 mcpKotlinSdk = "0.14.0"
 ktor = "3.5.2"
 orgJson = "20240303"
+openaiJava = "4.58.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,6 +34,7 @@ mcp-kotlin-sdk-core = { group = "io.modelcontextprotocol", name = "kotlin-sdk-co
 mcp-kotlin-sdk-client = { group = "io.modelcontextprotocol", name = "kotlin-sdk-client", version.ref = "mcpKotlinSdk" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
+openai-java = { group = "com.openai", name = "openai-java", version.ref = "openaiJava" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

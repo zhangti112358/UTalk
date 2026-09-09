@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.zhangti.utalk.agent.llm.LlmChatActivity
 import com.zhangti.utalk.speech.asr.AsrTestActivity
 import com.zhangti.utalk.speech.tts.TtsTestActivity
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +66,12 @@ class MainActivity : ComponentActivity() {
                             startActivity(Intent(this@MainActivity, TtsTestActivity::class.java))
                         }) {
                             Text("测试 TTS")
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = {
+                            startActivity(Intent(this@MainActivity, LlmChatActivity::class.java))
+                        }) {
+                            Text("测试 LLM 聊天")
                         }
                     }
                 }

@@ -83,6 +83,8 @@ dependencies {
     // MCP 协议类型与客户端（agent/tool 统一工具抽象 + 远程 MCP 调用）
     implementation(libs.mcp.kotlin.sdk.core)
     implementation(libs.mcp.kotlin.sdk.client)
+    // OpenAI 兼容 LLM 客户端（agent/llm，DeepSeek 走 OpenAI 协议）
+    implementation(libs.openai.java)
     // Ktor HTTP 引擎（MCP Streamable HTTP 传输需要，SDK 不内置引擎）
     implementation(libs.ktor.client.okhttp)
     // JVM 单测里 org.json 是 Android stub（keys() 返回 null），用真实实现替代
