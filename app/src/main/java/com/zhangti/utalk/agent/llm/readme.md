@@ -2,6 +2,13 @@
 
 纯模型流式调用（OpenAI 协议，DeepSeek 模型），与上层解耦：上下文、system prompt、工具注册均由上层管理，本层只负责发送与流式返回。
 
+## 文件
+
+- `LlmTypes.kt`：定义消息、工具、工具调用分片、请求和流式返回等厂商无关数据类型。
+- `LlmClient.kt`：定义模型客户端和可中断流的最小接口，供 Agent 运行时依赖。
+- `DeepSeekLlm.kt`：基于 OpenAI 兼容协议实现 DeepSeek 流式文本与工具调用，并处理历史工具消息。
+- `LlmChatActivity.kt`：不经过 Agent 的纯 LLM 聊天测试页面，用于单独验证模型流式输出和中断。
+
 ## 参考
 
 - 官方库：https://github.com/openai-java/openai-java（已克隆到 `third/openai-java`）

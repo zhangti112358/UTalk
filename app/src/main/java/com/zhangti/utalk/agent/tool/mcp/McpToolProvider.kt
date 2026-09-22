@@ -46,7 +46,8 @@ class McpToolProvider(private val config: McpServerConfig) : Closeable {
     /** 建连（只连一次）并拉取远程工具列表，包装为 [AgentTool]。 */
     suspend fun loadTools(): List<AgentTool> {
         if (!connected) {
-            Log.i(TAG, "连接远程 MCP：${config.name} -> ${config.url}")
+            // URL 可能携带 API key，绝不能写入 logcat。
+            Log.i(TAG, "连接远程 MCP：${config.name}")
             mcpClient.connect(transport)
             connected = true
         }

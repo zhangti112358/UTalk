@@ -2,6 +2,13 @@
 
 把远程 MCP 服务的工具接入统一 [AgentTool](../AgentTool.kt) 抽象，并遵守服务商 QPS 限制。
 
+## 文件
+
+- `McpServerConfig.kt`：保存单个远程 MCP 服务的名称、地址、请求头和 QPS 配置，并校验基本参数。
+- `McpToolProvider.kt`：建立 Streamable HTTP 连接、读取远程工具列表并管理 MCP 与 HTTP 客户端生命周期。
+- `RemoteMcpTool.kt`：把单个远程 MCP 工具包装为 `AgentTool`，调用前使用服务级限流器获取额度。
+- `RateLimiter.kt`：实现协程安全的令牌桶，限制同一个 MCP 服务所有工具共享的请求速率。
+
 ## 对外接口
 
 ### `McpServerConfig`（服务配置）

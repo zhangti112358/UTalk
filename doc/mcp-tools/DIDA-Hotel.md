@@ -35,7 +35,7 @@ MCP 地址: https://mcp.rollinggo.cn/mcp
                         "CANCELABLE",
                         "NON_CANCELABLE"
                     ],
-                    "description": "取消政策筛选。CANCELABLE：仅可免费取消房型；NON_CANCELABLE：仅不可取消房型。"
+                    "description": "取消政策筛选。CANCELABLE：仅可免费取消房型；NON_CANCELABLE：仅不可取消房型。非法值忽略。"
                 },
                 "mealType": {
                     "type": "string",
@@ -182,7 +182,7 @@ MCP 地址: https://mcp.rollinggo.cn/mcp
         },
         "place": {
             "type": "string",
-            "description": "搜索目标名称。填写用户指定的城市、机场、景点、火车站、地铁站、酒店、区/县或详细地址；如果用户输入的是具体酒店名称，直接填写酒店名称"
+            "description": "搜索地点关键词/酒店名称。具体酒店直接填入酒店名称；位置或区县需用空格补齐城市，填入 位置 城市；仅查询城市需补齐国家，填入 城市 国家。"
         },
         "placeType": {
             "type": "string",

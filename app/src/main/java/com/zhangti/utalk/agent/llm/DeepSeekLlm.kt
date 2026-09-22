@@ -180,10 +180,12 @@ private fun ChatCompletionChunk.toLlmChunk(): LlmChunk {
     val choice = choices().firstOrNull()
     val delta = choice?.delta()
     val text = delta?.content()?.orElse(null)
-    val toolCalls = delta?.toolCalls()?.orElse(null)?.mapIndexed { index, call ->
+    val toolCalls = delta?.toolCalls()?.orElse(null)?.map { call ->
         val fn = call.function().orElse(null)
         LlmToolCallDelta(
-            index = index,
+            // 一个流式块可能只携带多个调用中的某一个，必须使用协议里的稳定 index，
+            // 不能使用当前块内的列表下标。
+            index = call.index().toInt(),
             id = call.id().orElse(null),
             name = fn?.name()?.orElse(null),
             arguments = fn?.arguments()?.orElse(null),

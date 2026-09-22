@@ -2,6 +2,17 @@
 
 统一工具抽象：本地函数封装与远程 MCP 服务的工具共用同一接口。
 
+## 文件
+
+- `AgentTool.kt`：定义本地工具和远程 MCP 工具共同实现的定义与调用接口。
+- `ToolRegistry.kt`：提供按名称注册、列举和调用工具的基础注册表，未知工具会返回错误结果。
+- `EchoTool.kt`：最小本地示例工具，用于验证工具抽象、注册表和测试链路。
+- `catalog/`：保存全部工具及检索元数据，详情见 [`catalog/readme.md`](catalog/readme.md)。
+- `discovery/`：按需搜索并激活工具，详情见 [`discovery/readme.md`](discovery/readme.md)。
+- `execution/`：参数、策略、调用和结果转换，详情见 [`execution/readme.md`](execution/readme.md)。
+- `model/`：MCP 与模型工具格式适配，详情见 [`model/readme.md`](model/readme.md)。
+- `mcp/`：远程 MCP 服务接入，详情见 [`mcp/readme.md`](mcp/readme.md)。
+
 ## 参考
 
 https://github.com/modelcontextprotocol/kotlin-sdk

@@ -1,0 +1,37 @@
+# UTalk Agent 框架
+
+第一版是单主 Agent 的文字工具调用循环，语音链路暂未接入。
+
+## 模块边界
+
+- [`context/`](context/readme.md)：统一上下文元素、会话存储、请求组装和压缩扩展点。
+- [`runtime/`](runtime/readme.md)：模型 → 工具 → 模型循环、流式事件、取消和每次模型调用入口。
+- [`llm/`](llm/readme.md)：模型无关接口、请求类型和 DeepSeek 实现。
+- [`tool/`](tool/readme.md)：本地与远程工具共用的基础抽象。
+- [`tool/catalog/`](tool/catalog/readme.md)：完整工具目录、领域/风险元数据和检索。
+- [`tool/discovery/`](tool/discovery/readme.md)：`search_tools`，搜索后把完整工具 Schema 插入当前上下文。
+- [`tool/execution/`](tool/execution/readme.md)：参数解析、策略检查、调用及结果格式化。
+- [`tool/model/`](tool/model/readme.md)：MCP 工具到模型工具的适配和远程工具命名空间。
+- [`tool/mcp/`](tool/mcp/readme.md)：远程 MCP 连接、调用和限流。
+- [`bootstrap/`](bootstrap/readme.md)：地图、航班、酒店、打车、天气 MCP 的独立加载与分类。
+- [`ui/`](ui/readme.md)：文字 Agent 页面，只消费结构化 `AgentEvent`。
+
+## 工具暴露策略
+
+高德常用地图工具和 `search_tools` 始终提供给模型。航班、酒店、天气、打车及低频地图工具保存在目录中；模型调用 `search_tools` 后，命中的完整定义会作为 `ToolAvailabilityContext` 加入会话，从下一次模型调用开始可用。
+
+远程工具对模型使用稳定命名空间，例如：
+
+```text
+amap__maps_geo
+flight__searchFlightsByDepArr
+hotel__searchHotels
+ride__taxi_estimate
+weather__get_hourly_forecast
+```
+
+创建/取消订单被标记为 `CONFIRMATION_REQUIRED`。首版尚无确认 UI，因此策略层会拒绝实际执行，不会静默产生订单。
+
+## 压缩扩展
+
+`ContextPipeline` 当前没有默认 Transformer。后续对话摘要、工具结果压缩、工具定义卸载都应增加独立 `ContextTransformer`，不修改 `AgentLoop` 或 `DeepSeekLlm`。
