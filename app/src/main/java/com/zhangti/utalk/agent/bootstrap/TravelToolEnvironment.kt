@@ -10,6 +10,7 @@ import com.zhangti.utalk.agent.tool.catalog.ToolDomain
 import com.zhangti.utalk.agent.tool.catalog.ToolMetadata
 import com.zhangti.utalk.agent.tool.catalog.ToolRisk
 import com.zhangti.utalk.agent.tool.discovery.SearchToolsTool
+import com.zhangti.utalk.agent.tool.catalog.TravelToolExposurePolicy
 import com.zhangti.utalk.agent.tool.mcp.McpServerConfig
 import com.zhangti.utalk.agent.tool.mcp.McpToolProvider
 import com.zhangti.utalk.agent.tool.model.NamespacedAgentTool
@@ -53,7 +54,10 @@ class TravelToolEnvironment private constructor(
             loaded.forEach { (spec, provider, result) ->
                 providers += provider
                 result.onSuccess { tools ->
-                    tools.forEach { remote ->
+                    val exposedTools = tools.filter { remote ->
+                        TravelToolExposurePolicy.isVisible(spec.config.name, remote.definition.name)
+                    }
+                    exposedTools.forEach { remote ->
                         val tool = NamespacedAgentTool(spec.namespace, remote)
                         val originalName = remote.definition.name
                         val core = spec.domain == ToolDomain.MAP && originalName in CORE_MAP_TOOLS
@@ -72,7 +76,7 @@ class TravelToolEnvironment private constructor(
                             )
                         )
                     }
-                    onProgress("${spec.providerName}：已加载 ${tools.size} 个工具")
+                    onProgress("${spec.providerName}：已加载 ${exposedTools.size} 个工具")
                 }.onFailure {
                     errors += "${spec.providerName}: ${it.message ?: "连接失败"}"
                     onProgress("${spec.providerName}：加载失败")
@@ -108,10 +112,11 @@ class TravelToolEnvironment private constructor(
             else -> null
         }
 
-        private fun riskFor(domain: ToolDomain, name: String): ToolRisk =
-            if (domain == ToolDomain.RIDE &&
-                (name.contains("create_order") || name.contains("cancel_order"))
-            ) ToolRisk.CONFIRMATION_REQUIRED else ToolRisk.READ_ONLY
+        private fun riskFor(domain: ToolDomain, name: String): ToolRisk = when {
+            domain == ToolDomain.RIDE && name == "taxi_create_order" -> ToolRisk.EXPLICIT_RIDE_ORDER
+            domain == ToolDomain.RIDE && name == "taxi_cancel_order" -> ToolRisk.BLOCKED
+            else -> ToolRisk.READ_ONLY
+        }
 
         private fun keywordsFor(domain: ToolDomain, name: String): Set<String> =
             domain.aliases + name.replace('_', ' ').split(' ')

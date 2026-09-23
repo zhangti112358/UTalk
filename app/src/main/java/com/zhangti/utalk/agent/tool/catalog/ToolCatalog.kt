@@ -11,7 +11,7 @@ enum class ToolDomain(val aliases: Set<String>) {
     SYSTEM(setOf("系统", "工具", "tool")),
 }
 
-enum class ToolRisk { READ_ONLY, CONFIRMATION_REQUIRED }
+enum class ToolRisk { READ_ONLY, EXPLICIT_RIDE_ORDER, BLOCKED }
 
 data class ToolMetadata(
     val id: String,
@@ -74,7 +74,11 @@ class ToolCatalog {
                         normalized.split(Regex("\\s+|，|、")).any { it.length > 1 && field.contains(it) } -> 1
                         else -> 0
                     }
-                } + if (domain == meta.domain) 5 else 0
+                } + (if (domain == meta.domain) 5 else 0) +
+                    if (meta.domain == ToolDomain.RIDE &&
+                        meta.id.startsWith("ride__taxi_") &&
+                        RIDE_QUERY_TERMS.any(normalized::contains)
+                    ) 12 else 0
                 entry to score
             }
             .filter { (_, score) -> score > 0 || domain != null }
@@ -83,5 +87,10 @@ class ToolCatalog {
             .map { it.first }
             .toList()
     }
-}
 
+    companion object {
+        private val RIDE_QUERY_TERMS = listOf(
+            "打车", "叫车", "下单", "快车", "专车", "滴滴", "出租车", "网约车", "taxi", "ride",
+        )
+    }
+}

@@ -5,16 +5,20 @@ import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 
 fun interface ToolInvoker {
-    suspend fun invoke(toolId: String, arguments: Map<String, Any?>): CallToolResult
+    suspend fun invoke(toolId: String, arguments: Map<String, Any?>, turn: ToolTurnContext): CallToolResult
 }
 
 class CatalogToolInvoker(
     private val catalog: ToolCatalog,
-    private val policy: ToolPolicy = ReadOnlyToolPolicy(),
+    private val policy: ToolPolicy = ExplicitRideOrderPolicy(),
 ) : ToolInvoker {
-    override suspend fun invoke(toolId: String, arguments: Map<String, Any?>): CallToolResult {
+    override suspend fun invoke(
+        toolId: String,
+        arguments: Map<String, Any?>,
+        turn: ToolTurnContext,
+    ): CallToolResult {
         val entry = catalog.get(toolId) ?: return error("未知或尚未加载的工具：$toolId")
-        when (val decision = policy.evaluate(entry)) {
+        when (val decision = policy.evaluate(entry, arguments, turn)) {
             ToolPolicyDecision.Allow -> Unit
             is ToolPolicyDecision.Deny -> return error(decision.reason)
         }

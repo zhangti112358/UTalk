@@ -31,7 +31,7 @@ class AgentLoopTest {
             )
         )
         val events = mutableListOf<AgentEvent>()
-        val invoker = ToolInvoker { name, arguments ->
+        val invoker = ToolInvoker { name, arguments, _ ->
             assertEquals("weather", name)
             assertEquals("北京", arguments["city"])
             CallToolResult(listOf(TextContent("晴，25℃")), isError = false)
@@ -60,4 +60,3 @@ private class QueueLlmClient(responses: List<List<LlmChunk>>) : LlmClient {
         }
     }
 }
-

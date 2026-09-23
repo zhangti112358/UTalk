@@ -7,6 +7,7 @@ import com.zhangti.utalk.agent.context.UserInputContext
 import com.zhangti.utalk.agent.tool.execution.ToolArguments
 import com.zhangti.utalk.agent.tool.execution.ToolInvoker
 import com.zhangti.utalk.agent.tool.execution.ToolResultFormatter
+import com.zhangti.utalk.agent.tool.execution.ToolTurnContext
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.runBlocking
@@ -24,6 +25,7 @@ class AgentLoop(
         cancellation: AgentCancellation = AgentCancellation(),
     ) {
         context.append(UserInputContext(userText))
+        val turn = ToolTurnContext(userText)
         var lastText = ""
         try {
             repeat(maxModelCallsPerTurn) {
@@ -59,7 +61,7 @@ class AgentLoop(
                 calls.forEach { call ->
                     if (cancellation.isCancelled) return cancelled(listener)
                     listener.onEvent(AgentEvent.ToolStarted(call.name))
-                    val result = parseAndInvoke(call.name, call.arguments)
+                    val result = parseAndInvoke(call.name, call.arguments, turn)
                     context.append(
                         ToolResultContext(
                             toolCallId = call.id,
@@ -78,7 +80,11 @@ class AgentLoop(
         }
     }
 
-    private fun parseAndInvoke(name: String, rawArguments: String): CallToolResult = runBlocking {
+    private fun parseAndInvoke(
+        name: String,
+        rawArguments: String,
+        turn: ToolTurnContext,
+    ): CallToolResult = runBlocking {
         val arguments = runCatching { ToolArguments.parse(rawArguments) }
             .getOrElse {
                 return@runBlocking CallToolResult(
@@ -86,7 +92,7 @@ class AgentLoop(
                     isError = true,
                 )
             }
-        tools.invoke(name, arguments)
+        tools.invoke(name, arguments, turn)
     }
 
     private fun cancelled(listener: AgentEventListener) {

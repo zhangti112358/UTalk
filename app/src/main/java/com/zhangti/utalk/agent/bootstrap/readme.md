@@ -4,5 +4,4 @@
 
 ## 文件
 
-- `TravelToolEnvironment.kt`：并行连接高德、飞友、DIDA、滴滴和彩云 MCP，并给工具添加领域、风险、命名空间和核心/可搜索标记。它同时管理这些 MCP Provider 的生命周期并返回加载报告。
-
+- `TravelToolEnvironment.kt`：并行连接高德、飞友、DIDA、滴滴和彩云 MCP，过滤不可见工具，并给其余工具添加领域、风险、命名空间和核心/可搜索标记。它同时管理这些 MCP Provider 的生命周期并返回加载报告。

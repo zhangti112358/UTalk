@@ -6,6 +6,7 @@
 
 - `ToolArguments.kt`：解析模型生成的 JSON 参数，将 JSON 对象递归转换成工具接口需要的 Kotlin `Map`。
 - `ToolInvoker.kt`：从目录查找并调用工具，统一把未知工具和运行异常转换为模型可理解的错误结果。
-- `ToolPolicy.kt`：定义调用前的策略检查；首版只自动放行只读工具，创建或取消订单会被拒绝。
+- `ToolPolicy.kt`：定义调用前的策略检查；只读工具直接放行，明确叫车指令可以创建一次订单，取消订单仍不执行。
+- `ToolTurnContext.kt`：保存当前轮用户指令和一次性下单标记，防止模型重复发单或沿用旧授权。
+- `RideOrderIntent.kt`：识别当前轮明确叫车命令，排除询价、讨论与否定指令。
 - `ToolResultFormatter.kt`：把 MCP 的文本和结构化返回内容整理成可写入模型上下文的字符串。
-

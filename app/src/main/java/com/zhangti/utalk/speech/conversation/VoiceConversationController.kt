@@ -28,7 +28,8 @@ enum class VoiceConversationState {
 
 /**
  * 串联持续录音、VAD、ASR、Agent 和 TTS，但只依赖各模块公开接口。
- * 播报期间先用 ASR 确认插话，再决定是否中断；模型仍在生成但尚未播音时不会中断模型。
+ * 系统 AEC 已启用时，VAD 确认说话起点即打断播报；其他设备等 ASR 确认。
+ * 模型仍在生成但尚未播音时不会中断模型。
  */
 class VoiceConversationController(
     private val agent: AgentConversation,
@@ -108,7 +109,13 @@ class VoiceConversationController(
                 val playbackCandidate = currentPlayer?.isAudible == true
                 if (!agentRunning || playbackCandidate) {
                     changeStateLocked(VoiceConversationState.SPEECH_DETECTED)
-                    if (currentPlayer != null && !playbackCandidate) interruptPlaybackLocked()
+                    // 已确认开启 AEC 的设备可以在 VAD 起点立即打断，不必等用户说完。
+                    // ASR 仍会过滤可能漏进来的播报文本；无 AEC 时保留 ASR 确认。
+                    if (currentPlayer != null &&
+                        (!playbackCandidate || audioSource.isEchoCancellationActive)
+                    ) {
+                        interruptPlaybackLocked()
+                    }
                     beginAsrLocked(bufferedBeforeCurrentFrame, playbackCandidate)
                 }
             }

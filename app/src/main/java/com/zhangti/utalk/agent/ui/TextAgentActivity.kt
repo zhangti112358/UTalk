@@ -142,7 +142,7 @@ private fun AgentScreen() {
                                 VoiceConversationState.SPEECH_DETECTED -> "检测到说话…"
                                 VoiceConversationState.RECOGNIZING -> "正在识别…"
                                 VoiceConversationState.THINKING -> "思考中…"
-                                VoiceConversationState.SPEAKING -> "正在播报；说话后将识别并打断"
+                                VoiceConversationState.SPEAKING -> "正在播报，可直接说话打断"
                                 VoiceConversationState.ERROR -> "语音模式出错"
                             }
                         }

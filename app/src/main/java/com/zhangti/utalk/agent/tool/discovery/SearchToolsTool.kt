@@ -6,6 +6,7 @@ import com.zhangti.utalk.agent.context.ToolAvailabilitySource
 import com.zhangti.utalk.agent.tool.AgentTool
 import com.zhangti.utalk.agent.tool.catalog.ToolCatalog
 import com.zhangti.utalk.agent.tool.catalog.ToolDomain
+import com.zhangti.utalk.agent.tool.catalog.ToolRisk
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
@@ -65,7 +66,11 @@ class SearchToolsTool(
                 appendLine("已加载以下工具，下一轮可以直接调用：")
                 matches.forEach {
                     append("- ${it.metadata.id}: ${it.metadata.summary}")
-                    if (it.metadata.risk.name == "CONFIRMATION_REQUIRED") append("（执行前需用户确认）")
+                    when (it.metadata.risk) {
+                        ToolRisk.READ_ONLY -> Unit
+                        ToolRisk.EXPLICIT_RIDE_ORDER -> append("（仅在用户本轮明确要求叫车时可执行）")
+                        ToolRisk.BLOCKED -> append("（当前应用暂不执行）")
+                    }
                     appendLine()
                 }
             }.trimEnd()
@@ -86,4 +91,3 @@ class SearchToolsTool(
         const val ID = "search_tools"
     }
 }
-

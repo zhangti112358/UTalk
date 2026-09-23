@@ -18,11 +18,13 @@ class MicrophonePcmSource(
 ) : PcmAudioSource {
     private val appContext = context.applicationContext
     @Volatile private var running = false
+    @Volatile private var aecActive = false
     private var recorder: AudioRecord? = null
     private var echoCanceler: AcousticEchoCanceler? = null
     private var worker: Thread? = null
 
     override val isRunning: Boolean get() = running
+    override val isEchoCancellationActive: Boolean get() = running && aecActive
 
     override fun start(listener: PcmAudioSource.Listener) {
         check(!running) { "麦克风已经启动" }
@@ -54,6 +56,7 @@ class MicrophonePcmSource(
                 }
             }.onFailure { Log.w(TAG, "AEC 初始化失败", it) }.getOrNull()
         } else null
+        aecActive = runCatching { echoCanceler?.enabled == true }.getOrDefault(false)
         if (echoCanceler == null) Log.w(TAG, "设备未提供可用的系统 AEC")
         running = true
         worker = Thread({ capture(audioRecord, frameBytes, listener) }, "VoicePcmCapture").apply { start() }
@@ -85,6 +88,7 @@ class MicrophonePcmSource(
 
     override fun stop() {
         running = false
+        aecActive = false
         // stop() 会唤醒正在阻塞的 read。
         recorder?.let { runCatching { it.stop() } }
         echoCanceler?.release()

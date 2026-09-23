@@ -92,7 +92,7 @@ data class AppConfig(
         //         "Accept" to "application/json, text/event-stream",
         //     ),
         // ),
-        // 滴滴出行 MCP Server：网约车 + 地图（文档见 third/didi/mcp.md）。
+        // 滴滴出行 MCP Server：远端含网约车和地图工具，但 Agent 只暴露网约车工具（文档见 doc/didi/mcp.md）。
         // 用 sandbox 调试端点（Mock 数据，不产生真实订单）；
         // 生产端点：https://mcp.didichuxing.com/mcp-servers?key=<KEY>（会产生真实订单）。
         McpServerConfig(

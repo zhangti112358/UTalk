@@ -18,6 +18,47 @@ import org.junit.Test
 
 class VoiceConversationControllerTest {
     @Test
+    fun `active AEC interrupts at speech onset while ASR and model continue`() {
+        val audio = FakeAudioSource(aecActive = true)
+        val asr = FakeAsr()
+        val agent = FakeAgent()
+        val playerFactory = FakePlayerFactory()
+        val listener = FakeVoiceListener()
+        val controller = VoiceConversationController(
+            agent = agent,
+            listener = listener,
+            audioSource = audio,
+            vad = FakeVad(),
+            asr = asr,
+            playerFactory = playerFactory,
+        )
+
+        controller.start()
+        audio.emit(byteArrayOf(1, 1))
+        audio.emit(byteArrayOf(2, 2))
+        asr.emitResult("你好", isFinal = true)
+        asr.complete()
+        agent.emit(AgentEvent.TextDelta("这是答案。"))
+        val player = playerFactory.player
+        player.audible = true
+
+        audio.emit(byteArrayOf(1, 1))
+        assertTrue(player.interrupted) // 不等待静音终点或 ASR 最终结果
+        assertFalse(asr.session.finished)
+        assertFalse(agent.cancelled)
+        assertEquals(1, listener.interruptions.size)
+
+        audio.emit(byteArrayOf(2, 2))
+        asr.emitResult("等一下", isFinal = true)
+        asr.complete()
+        agent.emit(AgentEvent.Completed("这是答案。"))
+        assertEquals("这是答案", agent.recordedPrefix)
+        assertEquals("这是答案。", agent.recordedFullResponse)
+        assertEquals("等一下", agent.lastInput)
+        controller.close()
+    }
+
+    @Test
     fun `pre-roll reaches ASR and echo does not interrupt playback`() {
         val audio = FakeAudioSource()
         val vad = FakeVad()
@@ -76,10 +117,11 @@ class VoiceConversationControllerTest {
     }
 }
 
-private class FakeAudioSource : PcmAudioSource {
+private class FakeAudioSource(private val aecActive: Boolean = false) : PcmAudioSource {
     private var listener: PcmAudioSource.Listener? = null
     override var isRunning: Boolean = false
         private set
+    override val isEchoCancellationActive: Boolean get() = isRunning && aecActive
     override fun start(listener: PcmAudioSource.Listener) {
         this.listener = listener
         isRunning = true
