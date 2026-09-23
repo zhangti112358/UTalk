@@ -56,16 +56,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class TextAgentActivity : ComponentActivity() {
+    private lateinit var locationPermissionGate: ActivityLocationPermissionGate
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        locationPermissionGate = ActivityLocationPermissionGate(this)
         enableEdgeToEdge()
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AgentScreen()
+                    AgentScreen(locationPermissionGate)
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        locationPermissionGate.close()
+        super.onDestroy()
     }
 }
 
@@ -74,7 +82,7 @@ private enum class LineRole { USER, ASSISTANT, EVENT }
 private data class ChatLine(val id: Long, val role: LineRole, val text: String)
 
 @Composable
-private fun AgentScreen() {
+private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate) {
     val androidContext = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val sessionRef = remember { AtomicReference<TextAgentSession?>() }
@@ -195,7 +203,10 @@ private fun AgentScreen() {
 
     LaunchedEffect(Unit) {
         val created = withContext(Dispatchers.IO) {
-            TextAgentSession.create { progress -> mainHandler.post { status = progress } }
+            TextAgentSession.create(
+                appContext = androidContext.applicationContext,
+                locationPermissionGate = locationPermissionGate,
+            ) { progress -> mainHandler.post { status = progress } }
         }
         sessionRef.set(created.first)
         ready = true

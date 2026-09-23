@@ -1,5 +1,6 @@
 package com.zhangti.utalk.agent.bootstrap
 
+import android.content.Context
 import com.zhangti.utalk.AppConfig
 import com.zhangti.utalk.agent.context.AgentContextStore
 import com.zhangti.utalk.agent.context.ToolAvailabilityContext
@@ -11,6 +12,10 @@ import com.zhangti.utalk.agent.tool.catalog.ToolMetadata
 import com.zhangti.utalk.agent.tool.catalog.ToolRisk
 import com.zhangti.utalk.agent.tool.discovery.SearchToolsTool
 import com.zhangti.utalk.agent.tool.catalog.TravelToolExposurePolicy
+import com.zhangti.utalk.agent.tool.local.AndroidCurrentLocationSource
+import com.zhangti.utalk.agent.tool.local.CurrentLocationTool
+import com.zhangti.utalk.agent.tool.local.CurrentTimeTool
+import com.zhangti.utalk.agent.tool.local.LocationPermissionGate
 import com.zhangti.utalk.agent.tool.mcp.McpServerConfig
 import com.zhangti.utalk.agent.tool.mcp.McpToolProvider
 import com.zhangti.utalk.agent.tool.model.NamespacedAgentTool
@@ -35,6 +40,8 @@ class TravelToolEnvironment private constructor(
     companion object {
         suspend fun load(
             context: AgentContextStore,
+            appContext: Context,
+            locationPermissionGate: LocationPermissionGate,
             configs: List<McpServerConfig> = AppConfig.instance.remoteMcpServers,
             onProgress: (String) -> Unit = {},
         ): Pair<TravelToolEnvironment, ToolLoadReport> = coroutineScope {
@@ -82,6 +89,38 @@ class TravelToolEnvironment private constructor(
                     onProgress("${spec.providerName}：加载失败")
                 }
             }
+
+            val locationTool = CurrentLocationTool(
+                AndroidCurrentLocationSource(appContext, locationPermissionGate)
+            )
+            catalog.register(
+                CatalogTool(
+                    metadata = ToolMetadata(
+                        id = CurrentLocationTool.ID,
+                        provider = "device",
+                        domain = ToolDomain.MAP,
+                        summary = locationTool.definition.description.orEmpty(),
+                        keywords = setOf("当前位置", "我的位置", "我在哪", "手机定位", "GPS"),
+                        core = true,
+                    ),
+                    tool = locationTool,
+                )
+            )
+
+            val timeTool = CurrentTimeTool()
+            catalog.register(
+                CatalogTool(
+                    metadata = ToolMetadata(
+                        id = CurrentTimeTool.ID,
+                        provider = "device",
+                        domain = ToolDomain.SYSTEM,
+                        summary = timeTool.definition.description.orEmpty(),
+                        keywords = setOf("时间", "日期", "星期", "几点", "几号"),
+                        core = true,
+                    ),
+                    tool = timeTool,
+                )
+            )
 
             val searchTool = SearchToolsTool(catalog, context)
             catalog.register(

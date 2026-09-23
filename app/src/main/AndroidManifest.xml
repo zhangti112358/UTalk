@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- 豆包 ASR / DeepSeek 等网络请求 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 当前手机位置：只在 Agent 请求定位时申请运行时权限 -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:allowBackup="true"

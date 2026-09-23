@@ -13,6 +13,7 @@
 - [`tool/execution/`](tool/execution/readme.md)：参数解析、策略检查、调用及结果格式化。
 - [`tool/model/`](tool/model/readme.md)：MCP 工具到模型工具的适配和远程工具命名空间。
 - [`tool/mcp/`](tool/mcp/readme.md)：远程 MCP 连接、调用和限流。
+- [`tool/local/`](tool/local/readme.md)：按需获取手机当前 GPS/网络位置与本地时间的工具。
 - [`bootstrap/`](bootstrap/readme.md)：地图、航班、酒店、打车、天气 MCP 的独立加载与分类。
 - [`ui/`](ui/readme.md)：文字 Agent 页面，只消费结构化 `AgentEvent`。
 - [`../speech/audio/`](../speech/audio/readme.md)：持续麦克风采集与前置 PCM 缓冲。
@@ -22,7 +23,7 @@
 
 ## 工具暴露策略
 
-高德常用地图工具和 `search_tools` 始终提供给模型。航班、酒店、天气、打车及低频地图工具保存在目录中；模型调用 `search_tools` 后，命中的完整定义会作为 `ToolAvailabilityContext` 加入会话，从下一次模型调用开始可用。
+高德常用地图工具、`device_current_location`、`device_current_time` 和 `search_tools` 始终提供给模型。航班、酒店、天气、打车及低频地图工具保存在目录中；模型调用 `search_tools` 后，命中的完整定义会作为 `ToolAvailabilityContext` 加入会话，从下一次模型调用开始可用。
 
 远程工具对模型使用稳定命名空间，例如：
 

@@ -12,6 +12,7 @@
 - `execution/`：参数、策略、调用和结果转换，详情见 [`execution/readme.md`](execution/readme.md)。
 - `model/`：MCP 与模型工具格式适配，详情见 [`model/readme.md`](model/readme.md)。
 - `mcp/`：远程 MCP 服务接入，详情见 [`mcp/readme.md`](mcp/readme.md)。
+- `local/`：本地设备工具，提供按需读取手机当前位置和当前时间，详情见 [`local/readme.md`](local/readme.md)。
 
 ## 参考
 
