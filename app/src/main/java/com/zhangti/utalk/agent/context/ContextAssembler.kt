@@ -28,6 +28,18 @@ class ContextAssembler(
                     toolCallId = item.toolCallId,
                 )
                 is ToolAvailabilityContext -> null
+                is AssistantPlaybackContext -> LlmMessage(
+                    role = LlmRole.SYSTEM,
+                    content = buildString {
+                        append("上一轮语音播报被用户打断。用户实际听到的内容")
+                        if (item.estimated) append("（根据音频进度估算）")
+                        append("：\"")
+                        append(item.spokenPrefix)
+                        append("\"。上一轮完整回答是：\"")
+                        append(item.fullResponse)
+                        append("\"。回答下一轮时请考虑用户没有听到剩余部分，不要假设其已知。")
+                    },
+                )
             }
         }
         val toolIds = context.items.filterIsInstance<ToolAvailabilityContext>()
@@ -38,4 +50,3 @@ class ContextAssembler(
         return LlmRequest(messages = messages, tools = tools)
     }
 }
-

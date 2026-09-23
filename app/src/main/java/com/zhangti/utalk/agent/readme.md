@@ -1,6 +1,6 @@
 # UTalk Agent 框架
 
-第一版是单主 Agent 的文字工具调用循环，语音链路暂未接入。
+第一版使用单主 Agent 的工具调用循环，同时支持文字输入和基于 VAD 的持续语音对话。
 
 ## 模块边界
 
@@ -15,6 +15,10 @@
 - [`tool/mcp/`](tool/mcp/readme.md)：远程 MCP 连接、调用和限流。
 - [`bootstrap/`](bootstrap/readme.md)：地图、航班、酒店、打车、天气 MCP 的独立加载与分类。
 - [`ui/`](ui/readme.md)：文字 Agent 页面，只消费结构化 `AgentEvent`。
+- [`../speech/audio/`](../speech/audio/readme.md)：持续麦克风采集与前置 PCM 缓冲。
+- [`../speech/vad/`](../speech/vad/readme.md)：本地 Silero VAD 和连续说话状态。
+- [`../speech/conversation/`](../speech/conversation/readme.md)：ASR、Agent、TTS 与播报打断编排。
+- [`../speech/playback/`](../speech/playback/readme.md)：流式 TTS 播放和已播报进度估算。
 
 ## 工具暴露策略
 

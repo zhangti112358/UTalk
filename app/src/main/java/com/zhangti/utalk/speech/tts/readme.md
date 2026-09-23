@@ -10,6 +10,12 @@ https://docs.volcengine.com/docs/6561/2532486?lang=zh
 1. ✅ DoubaoTTS 类：双向流式 WebSocket 协议（OkHttp 直连），输入文本 → 流式返回 PCM 音频
 2. ✅ TtsTestActivity：文本合成播放测试页（MainActivity「测试 TTS」进入，播放中再点 = 打断重播）
 
+## 文件
+
+- `DoubaoTTS.kt`：实现豆包双向 WebSocket 合成协议，支持多次发送文本并流式回调 PCM。
+- `TtsConstants.kt`：保存 TTS 地址、音色、采样参数和连接/会话事件常量。
+- `TtsTestActivity.kt`：提供文本输入、流式播放和手动打断的独立测试页面。
+
 # 对外接口
 
 ### `DoubaoTTS`（流式合成客户端）

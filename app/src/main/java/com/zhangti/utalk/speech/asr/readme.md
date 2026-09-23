@@ -14,6 +14,13 @@ https://github.com/volcengine/sauc-python-demo
 1. ✅ DoubaoAsr 类：WebSocket 二进制协议（OkHttp 直连）
 2. ✅ AsrTestActivity：麦克风实时流式识别测试页（MainActivity「测试 ASR」进入）
 
+## 文件
+
+- `DoubaoAsr.kt`：实现豆包双向 WebSocket 协议，接收连续 PCM 并回调增量和最终识别文本。
+- `StreamingAsrClient.kt`：定义语音编排依赖的厂商无关流式识别接口，并提供豆包适配器。
+- `AsrConstants.kt`：保存 ASR 地址、采样参数和二进制帧协议常量。
+- `AsrTestActivity.kt`：提供手动开始/停止的麦克风 ASR 独立测试页面。
+
 # 对外接口
 
 ### `DoubaoAsr`（流式识别客户端）

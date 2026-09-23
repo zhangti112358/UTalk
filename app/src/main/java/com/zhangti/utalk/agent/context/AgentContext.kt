@@ -32,10 +32,19 @@ data class ToolAvailabilityContext(
     val source: ToolAvailabilitySource,
 ) : AgentContextItem
 
+/**
+ * TTS 播放被用户打断时的会话事实。已播报前缀由播放器根据 PCM 播放进度估算，
+ * 单独建模后可在未来压缩或替换为服务端字级时间戳。
+ */
+data class AssistantPlaybackContext(
+    val spokenPrefix: String,
+    val fullResponse: String,
+    val estimated: Boolean = true,
+) : AgentContextItem
+
 enum class ToolAvailabilitySource {
     CORE,
     DISCOVERED,
 }
 
 data class AgentContextSnapshot(val items: List<AgentContextItem>)
-

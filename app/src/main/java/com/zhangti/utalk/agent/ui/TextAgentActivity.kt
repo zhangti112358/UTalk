@@ -1,11 +1,15 @@
 package com.zhangti.utalk.agent.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +29,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,10 +42,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.zhangti.utalk.agent.runtime.AgentEvent
 import com.zhangti.utalk.agent.runtime.AgentEventListener
 import com.zhangti.utalk.agent.runtime.TextAgentSession
+import com.zhangti.utalk.speech.conversation.VoiceConversationController
+import com.zhangti.utalk.speech.conversation.VoiceConversationState
+import com.zhangti.utalk.speech.playback.PlaybackProgress
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -52,7 +62,7 @@ class TextAgentActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TextAgentScreen()
+                    AgentScreen()
                 }
             }
         }
@@ -61,29 +71,131 @@ class TextAgentActivity : ComponentActivity() {
 
 private enum class LineRole { USER, ASSISTANT, EVENT }
 
-private data class ChatLine(
-    val id: Long,
-    val role: LineRole,
-    val text: String,
-)
+private data class ChatLine(val id: Long, val role: LineRole, val text: String)
 
 @Composable
-private fun TextAgentScreen() {
+private fun AgentScreen() {
+    val androidContext = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val sessionRef = remember { AtomicReference<TextAgentSession?>() }
+    val voiceRef = remember { AtomicReference<VoiceConversationController?>() }
     var lines by remember { mutableStateOf<List<ChatLine>>(emptyList()) }
     var input by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("正在加载出行工具…") }
+    var voicePartial by remember { mutableStateOf("") }
     var ready by remember { mutableStateOf(false) }
     var running by remember { mutableStateOf(false) }
+    var voiceEnabled by remember { mutableStateOf(false) }
     var streamingText by remember { mutableStateOf("") }
     var nextId by remember { mutableStateOf(1L) }
 
+    fun addLine(role: LineRole, text: String) {
+        lines = lines + ChatLine(nextId++, role, text)
+    }
+
+    fun handleAgentEvent(event: AgentEvent) {
+        when (event) {
+            is AgentEvent.TextDelta -> streamingText += event.text
+            is AgentEvent.ToolStarted -> {
+                status = "正在调用 ${event.name}…"
+                addLine(LineRole.EVENT, "调用工具：${event.name}")
+            }
+            is AgentEvent.ToolFinished -> {
+                status = if (event.isError) "工具返回错误，正在处理…" else "工具完成，继续思考…"
+            }
+            is AgentEvent.Completed -> {
+                val finalText = streamingText.ifBlank { event.text }
+                if (finalText.isNotBlank()) addLine(LineRole.ASSISTANT, finalText)
+                streamingText = ""
+                running = false
+                if (!voiceEnabled) status = "就绪"
+            }
+            is AgentEvent.Failed -> {
+                if (streamingText.isNotBlank()) addLine(LineRole.ASSISTANT, streamingText)
+                streamingText = ""
+                addLine(LineRole.EVENT, "出错：${event.message}")
+                running = false
+                status = "出错"
+            }
+            AgentEvent.Cancelled -> {
+                if (streamingText.isNotBlank()) addLine(LineRole.ASSISTANT, streamingText)
+                streamingText = ""
+                running = false
+                status = "已停止"
+            }
+        }
+    }
+
+    fun enableVoice() {
+        val session = sessionRef.get() ?: return
+        if (voiceRef.get() != null) return
+        try {
+            val controller = VoiceConversationController.create(
+                context = androidContext,
+                agent = session,
+                listener = object : VoiceConversationController.Listener {
+                    override fun onStateChanged(state: VoiceConversationState) {
+                        mainHandler.post {
+                            status = when (state) {
+                                VoiceConversationState.STOPPED -> "语音模式已关闭"
+                                VoiceConversationState.LISTENING -> "正在聆听…"
+                                VoiceConversationState.SPEECH_DETECTED -> "检测到说话…"
+                                VoiceConversationState.RECOGNIZING -> "正在识别…"
+                                VoiceConversationState.THINKING -> "思考中…"
+                                VoiceConversationState.SPEAKING -> "正在播报；说话后将识别并打断"
+                                VoiceConversationState.ERROR -> "语音模式出错"
+                            }
+                        }
+                    }
+
+                    override fun onPartialTranscript(text: String) {
+                        mainHandler.post { voicePartial = text }
+                    }
+
+                    override fun onFinalTranscript(text: String) {
+                        mainHandler.post {
+                            voicePartial = ""
+                            streamingText = ""
+                            running = true
+                            addLine(LineRole.USER, text)
+                        }
+                    }
+
+                    override fun onAgentEvent(event: AgentEvent) {
+                        mainHandler.post { handleAgentEvent(event) }
+                    }
+
+                    override fun onPlaybackInterrupted(progress: PlaybackProgress) {
+                        mainHandler.post {
+                            addLine(
+                                LineRole.EVENT,
+                                "已打断播报；估算已听到：${progress.spokenPrefix.ifBlank { "（开头之前）" }}",
+                            )
+                        }
+                    }
+
+                    override fun onError(throwable: Throwable) {
+                        mainHandler.post {
+                            addLine(LineRole.EVENT, "语音错误：${throwable.message ?: "未知错误"}")
+                        }
+                    }
+                },
+            )
+            voiceRef.set(controller)
+            voiceEnabled = true
+            voicePartial = ""
+            addLine(LineRole.EVENT, "语音模式已开启")
+            controller.start()
+        } catch (t: Throwable) {
+            voiceRef.getAndSet(null)?.close()
+            voiceEnabled = false
+            status = "语音启动失败：${t.message ?: "未知错误"}"
+        }
+    }
+
     LaunchedEffect(Unit) {
         val created = withContext(Dispatchers.IO) {
-            TextAgentSession.create { progress ->
-                mainHandler.post { status = progress }
-            }
+            TextAgentSession.create { progress -> mainHandler.post { status = progress } }
         }
         sessionRef.set(created.first)
         ready = true
@@ -95,7 +207,16 @@ private fun TextAgentScreen() {
     }
 
     DisposableEffect(Unit) {
-        onDispose { sessionRef.getAndSet(null)?.close() }
+        onDispose {
+            voiceRef.getAndSet(null)?.close()
+            sessionRef.getAndSet(null)?.close()
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) enableVoice() else status = "未授予麦克风权限"
     }
 
     val listState = rememberLazyListState()
@@ -104,57 +225,41 @@ private fun TextAgentScreen() {
         if (count > 0) listState.animateScrollToItem(count - 1)
     }
 
-    fun addLine(role: LineRole, text: String) {
-        lines = lines + ChatLine(nextId++, role, text)
+    fun toggleVoice() {
+        if (voiceEnabled) {
+            voiceRef.getAndSet(null)?.close()
+            voiceEnabled = false
+            running = false
+            streamingText = ""
+            voicePartial = ""
+            status = "语音模式已关闭"
+            addLine(LineRole.EVENT, "语音模式已关闭，仍可使用文字对话")
+        } else if (ContextCompat.checkSelfPermission(
+                androidContext,
+                Manifest.permission.RECORD_AUDIO,
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            enableVoice()
+        } else {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
-    fun send() {
-        val text = input.trim()
+    fun sendText() {
         val session = sessionRef.get()
-        if (text.isEmpty() || session == null || !ready) return
+        if (session == null || !ready || voiceEnabled) return
         if (running) {
             session.cancel()
             return
         }
+        val text = input.trim()
+        if (text.isEmpty()) return
         input = ""
         streamingText = ""
         running = true
         status = "思考中…"
         addLine(LineRole.USER, text)
-        session.send(text, AgentEventListener { event ->
-            mainHandler.post {
-                when (event) {
-                    is AgentEvent.TextDelta -> streamingText += event.text
-                    is AgentEvent.ToolStarted -> {
-                        status = "正在调用 ${event.name}…"
-                        addLine(LineRole.EVENT, "调用工具：${event.name}")
-                    }
-                    is AgentEvent.ToolFinished -> {
-                        status = if (event.isError) "工具返回错误，正在交给模型处理…" else "工具完成，继续思考…"
-                    }
-                    is AgentEvent.Completed -> {
-                        val finalText = streamingText.ifBlank { event.text }
-                        if (finalText.isNotBlank()) addLine(LineRole.ASSISTANT, finalText)
-                        streamingText = ""
-                        running = false
-                        status = "就绪"
-                    }
-                    is AgentEvent.Failed -> {
-                        if (streamingText.isNotBlank()) addLine(LineRole.ASSISTANT, streamingText)
-                        streamingText = ""
-                        addLine(LineRole.EVENT, "出错：${event.message}")
-                        running = false
-                        status = "出错"
-                    }
-                    AgentEvent.Cancelled -> {
-                        if (streamingText.isNotBlank()) addLine(LineRole.ASSISTANT, streamingText)
-                        streamingText = ""
-                        running = false
-                        status = "已停止"
-                    }
-                }
-            }
-        })
+        session.send(text, AgentEventListener { event -> mainHandler.post { handleAgentEvent(event) } })
     }
 
     Column(
@@ -163,8 +268,23 @@ private fun TextAgentScreen() {
             .safeDrawingPadding(),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text("UTalk 文字 Agent", style = MaterialTheme.typography.titleLarge)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("UTalk Agent", style = MaterialTheme.typography.titleLarge)
+                OutlinedButton(
+                    onClick = { toggleVoice() },
+                    enabled = ready && (!running || voiceEnabled),
+                ) {
+                    Text(if (voiceEnabled) "关闭语音" else "开启语音")
+                }
+            }
             Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (voicePartial.isNotBlank()) {
+                Text("识别中：$voicePartial", style = MaterialTheme.typography.bodyMedium)
+            }
         }
         LazyColumn(
             state = listState,
@@ -189,13 +309,18 @@ private fun TextAgentScreen() {
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                enabled = ready && !running,
-                placeholder = { Text(if (ready) "问路线、航班、酒店、天气或打车…" else "正在初始化…") },
+                enabled = ready && !running && !voiceEnabled,
+                placeholder = {
+                    Text(if (voiceEnabled) "语音模式正在持续聆听" else "问路线、航班、酒店、天气或打车…")
+                },
                 modifier = Modifier.weight(1f),
                 maxLines = 4,
             )
             Spacer(Modifier.width(12.dp))
-            Button(onClick = { send() }, enabled = ready && (running || input.isNotBlank())) {
+            Button(
+                onClick = { sendText() },
+                enabled = ready && !voiceEnabled && (running || input.isNotBlank()),
+            ) {
                 Text(if (running) "停止" else "发送")
             }
         }

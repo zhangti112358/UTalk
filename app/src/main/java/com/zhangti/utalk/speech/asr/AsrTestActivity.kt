@@ -59,6 +59,7 @@ class AsrTestActivity : ComponentActivity() {
  * 连接未就绪时的音频包由 Session 自动暂存、就绪后补发。
  */
 private class MicAsrSession(
+    private val context: android.content.Context,
     private val asr: DoubaoAsr,
     private val listener: DoubaoAsr.Listener,
 ) {
@@ -83,6 +84,10 @@ private class MicAsrSession(
     }
 
     private fun startCapture() {
+        check(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED,
+        ) { "未授予麦克风权限" }
         val sampleRate = AsrConstants.SAMPLE_RATE
         val segmentBytes = sampleRate * 2 * 100 / 1000 // 100ms 一包
         val minBuffer = AudioRecord.getMinBufferSize(
@@ -136,6 +141,7 @@ private fun AsrTestScreen() {
 
     fun startSession() {
         val newSession = MicAsrSession(
+            context = context,
             asr = DoubaoAsr(), // API Key 走 AppConfig（secrets.properties）
             listener = object : DoubaoAsr.Listener {
                 // 注意：回调在 OkHttp WS 线程，Compose state 线程安全可直接更新

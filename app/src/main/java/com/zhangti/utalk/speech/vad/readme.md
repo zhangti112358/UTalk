@@ -2,6 +2,16 @@
 
 基于 Silero VAD 模型的语音活动检测（参考 gkonovalov/android-vad）。
 
+## 文件
+
+- `VoiceActivityDetector.kt`：定义单帧语音检测的统一接口。
+- `SileroVad.kt`：加载 ONNX 模型并维护跨帧 LSTM 状态，输出经过迟滞过滤的语音判断。
+- `ContinuousVadProcessor.kt`：把逐帧判断包装成独立的连续状态服务，额外标记语音开始和结束的状态变化。
+- `SpeechStateFilter.kt`：用最短语音和静音时长过滤瞬时抖动。
+- `VadConfig.kt`：定义支持的采样率、帧长和检测阈值模式。
+- `AudioUtils.kt`：负责 PCM、Short 与 Float 音频格式转换和时长/帧数计算。
+- `TensorMap.kt`：管理一次 ONNX 推理创建的输入张量并统一释放。
+
 ## 对外接口
 
 ### `VoiceActivityDetector`（接口）

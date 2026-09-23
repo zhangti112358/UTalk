@@ -31,5 +31,16 @@ class ContextAssemblerTest {
         assertEquals(listOf("echo"), request.tools.map { it.name })
         assertEquals("object", request.tools.single().schema["type"])
     }
-}
 
+    @Test
+    fun `playback interruption becomes a model-visible context note`() {
+        val store = InMemoryAgentContextStore()
+        store.append(AssistantPlaybackContext("前半句", "前半句和后半句"))
+
+        val request = ContextAssembler(ToolCatalog()).assemble(store.snapshot())
+
+        assertEquals(LlmRole.SYSTEM, request.messages.single().role)
+        assert(request.messages.single().content!!.contains("前半句"))
+        assert(request.messages.single().content!!.contains("没有听到剩余部分"))
+    }
+}
