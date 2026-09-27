@@ -46,6 +46,11 @@ class DeepSeekLlm(
             val imageBytes = request.messages.flatMap { it.images }.sumOf { java.io.File(it.path).length() }
             check(imageBytes <= 32L * 1024 * 1024) { "会话图片总量过大，请开启新会话；未自动删除任何原图" }
             model(model)
+            // DeepSeek 默认开启思考；语音对话优先及时响应，所有请求显式关闭。
+            putAdditionalBodyProperty(
+                "thinking",
+                JsonValue.fromJsonNode(MAPPER.valueToTree(mapOf("type" to "disabled"))),
+            )
             request.messages.forEach { message ->
                 when (message.role) {
                     LlmRole.SYSTEM -> addSystemMessage(message.content ?: "")
