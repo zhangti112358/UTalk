@@ -11,8 +11,7 @@ object ToolResultFormatter {
                 else -> content.toString()
             }
         }.toMutableList()
-        result.structuredContent?.let { parts += it.toString() }
+        result.structuredContent?.takeUnless { "photo_path" in it }?.let { parts += it.toString() }
         return parts.joinToString("\n").ifBlank { "工具执行完成，但没有返回内容" }
     }
 }
-

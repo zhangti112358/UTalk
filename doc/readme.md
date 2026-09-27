@@ -1,5 +1,7 @@
 # 参考信息
 
+- [自动拍照工具](local-tools/device_take_photo.md)：相机权限、广角回退、原图保留和模型输入流程。
+
 ## 出行工具接口
 
 - [MCP 工具索引](mcp-tools/readme.md)：高德地图、飞友航班、DIDA 酒店、滴滴出行和彩云天气的逐工具说明及输入 Schema。

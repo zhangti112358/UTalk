@@ -51,7 +51,7 @@ data class AppConfig(
 ) {
     // ── 非敏感配置，硬编码 ──
     val deepseekBaseUrl: String = "https://api.deepseek.com/v1/"
-    val deepseekModel: String = "deepseek-v4-flash"
+    val deepseekModel: String = "deepseek-flash"
     val doubaoAsrUrl: String = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"
     val doubaoTtsUrl: String = "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
 

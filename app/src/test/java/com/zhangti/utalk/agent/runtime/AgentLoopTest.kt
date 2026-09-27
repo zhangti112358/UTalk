@@ -19,6 +19,41 @@ import org.junit.Test
 
 class AgentLoopTest {
     @Test
+    fun `photo is appended after all tool results and sent on next turn`() {
+        val context = InMemoryAgentContextStore()
+        val requests = mutableListOf<LlmRequest>()
+        var index = 0
+        val llm = object : LlmClient {
+            override fun stream(request: LlmRequest): LlmStream {
+                requests += request
+                val chunk = if (index++ == 0) LlmChunk(null, listOf(
+                    LlmToolCallDelta(0, "photo-1", "device_take_photo", "{}"),
+                    LlmToolCallDelta(1, "time-1", "device_current_time", "{}"),
+                )) else LlmChunk("这是花。")
+                var emitted = false
+                return object : LlmStream {
+                    override fun next(): LlmChunk? = if (emitted) null else chunk.also { emitted = true }
+                    override fun close() = Unit
+                }
+            }
+        }
+        val photo = com.zhangti.utalk.agent.tool.local.TakePhotoTool {
+            com.zhangti.utalk.agent.tool.local.CapturedPhoto("/private/photo.jpg", "now", "wide")
+        }
+        val loop = AgentLoop(context, AgentModelCaller(llm, ContextAssembler(ToolCatalog())),
+            ToolInvoker { name, _, _ ->
+                if (name == "device_take_photo") photo.call(emptyMap()) else CallToolResult(listOf(TextContent("now")))
+            })
+        loop.runTurn("看一下花", AgentEventListener {})
+        loop.runTurn("它是什么颜色", AgentEventListener {})
+        assertEquals("/private/photo.jpg", requests.last().messages.flatMap { it.images }.single().path)
+        val messages = requests[1].messages
+        assertEquals(listOf(com.zhangti.utalk.agent.llm.LlmRole.TOOL, com.zhangti.utalk.agent.llm.LlmRole.TOOL),
+            messages.drop(2).take(2).map { it.role })
+        assertEquals(com.zhangti.utalk.agent.llm.LlmRole.USER, messages[4].role)
+    }
+
+    @Test
     fun `loops through tool result and returns final answer`() {
         val context = InMemoryAgentContextStore()
         val llm = QueueLlmClient(

@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                         Button(onClick = {
                             startActivity(Intent(this@MainActivity, TextAgentActivity::class.java))
                         }) {
-                            Text("运行文字 Agent")
+                            Text("运行 Agent")
                         }
                     }
                 }

@@ -5,6 +5,7 @@
 ## 文件
 
 - `LlmTypes.kt`：定义消息、工具、工具调用分片、请求和流式返回等厂商无关数据类型。
+- `ImageMessageAdapter.kt`：在请求边界读取原图，构建标准 user 图片内容块与 Base64 data URL；缺失原图时明确失败。
 - `LlmClient.kt`：定义模型客户端和可中断流的最小接口，供 Agent 运行时依赖。
 - `DeepSeekLlm.kt`：基于 OpenAI 兼容协议实现 DeepSeek 流式文本与工具调用，并处理历史工具消息。
 - `LlmChatActivity.kt`：不经过 Agent 的纯 LLM 聊天测试页面，用于单独验证模型流式输出和中断。

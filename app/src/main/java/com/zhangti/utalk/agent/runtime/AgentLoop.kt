@@ -4,6 +4,8 @@ import com.zhangti.utalk.agent.context.AgentContextStore
 import com.zhangti.utalk.agent.context.AssistantOutputContext
 import com.zhangti.utalk.agent.context.ToolResultContext
 import com.zhangti.utalk.agent.context.UserInputContext
+import com.zhangti.utalk.agent.context.ImageContext
+import com.zhangti.utalk.agent.tool.execution.ToolResultAttachments
 import com.zhangti.utalk.agent.tool.execution.ToolArguments
 import com.zhangti.utalk.agent.tool.execution.ToolInvoker
 import com.zhangti.utalk.agent.tool.execution.ToolResultFormatter
@@ -58,10 +60,12 @@ class AgentLoop(
                     return
                 }
 
+                val photos = mutableListOf<ImageContext>()
                 calls.forEach { call ->
                     if (cancellation.isCancelled) return cancelled(listener)
                     listener.onEvent(AgentEvent.ToolStarted(call.name))
                     val result = parseAndInvoke(call.name, call.arguments, turn)
+                    photos += ToolResultAttachments.images(call.name, result)
                     context.append(
                         ToolResultContext(
                             toolCallId = call.id,
@@ -72,6 +76,8 @@ class AgentLoop(
                     )
                     listener.onEvent(AgentEvent.ToolFinished(call.name, result.isError == true))
                 }
+                // 所有工具结果先配对完成，再插入图片 user 消息。
+                photos.forEach(context::append)
             }
             listener.onEvent(AgentEvent.Failed("本轮工具调用次数过多，已停止"))
         } catch (t: Throwable) {

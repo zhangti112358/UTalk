@@ -10,6 +10,9 @@ import com.zhangti.utalk.agent.llm.LlmToolCall
  */
 sealed interface AgentContextItem
 
+/** 原图只保存私有文件引用；每次请求重新作为图片输入，而不是压缩成描述。 */
+data class ImageContext(val path: String, val capturedAt: String) : AgentContextItem
+
 data class SystemPromptContext(val text: String) : AgentContextItem
 
 data class UserInputContext(val text: String) : AgentContextItem

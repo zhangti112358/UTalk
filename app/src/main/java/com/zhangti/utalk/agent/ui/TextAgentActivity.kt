@@ -57,15 +57,17 @@ import kotlinx.coroutines.withContext
 
 class TextAgentActivity : ComponentActivity() {
     private lateinit var locationPermissionGate: ActivityLocationPermissionGate
+    private lateinit var photoCapture: PhotoCaptureCoordinator
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         locationPermissionGate = ActivityLocationPermissionGate(this)
+        photoCapture = PhotoCaptureCoordinator(this)
         enableEdgeToEdge()
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AgentScreen(locationPermissionGate)
+                    AgentScreen(locationPermissionGate, photoCapture)
                 }
             }
         }
@@ -73,6 +75,7 @@ class TextAgentActivity : ComponentActivity() {
 
     override fun onDestroy() {
         locationPermissionGate.close()
+        photoCapture.close()
         super.onDestroy()
     }
 }
@@ -82,7 +85,7 @@ private enum class LineRole { USER, ASSISTANT, EVENT }
 private data class ChatLine(val id: Long, val role: LineRole, val text: String)
 
 @Composable
-private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate) {
+private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, photoCapture: PhotoCaptureCoordinator) {
     val androidContext = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val sessionRef = remember { AtomicReference<TextAgentSession?>() }
@@ -206,6 +209,7 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate) 
             TextAgentSession.create(
                 appContext = androidContext.applicationContext,
                 locationPermissionGate = locationPermissionGate,
+                photoCaptureSource = photoCapture,
             ) { progress -> mainHandler.post { status = progress } }
         }
         sessionRef.set(created.first)
@@ -293,6 +297,7 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate) 
                 }
             }
             Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            PhotoCapturePanel(photoCapture)
             if (voicePartial.isNotBlank()) {
                 Text("识别中：$voicePartial", style = MaterialTheme.typography.bodyMedium)
             }

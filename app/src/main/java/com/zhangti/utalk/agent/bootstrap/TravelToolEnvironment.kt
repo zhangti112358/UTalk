@@ -16,6 +16,8 @@ import com.zhangti.utalk.agent.tool.local.AndroidCurrentLocationSource
 import com.zhangti.utalk.agent.tool.local.CurrentLocationTool
 import com.zhangti.utalk.agent.tool.local.CurrentTimeTool
 import com.zhangti.utalk.agent.tool.local.LocationPermissionGate
+import com.zhangti.utalk.agent.tool.local.PhotoCaptureSource
+import com.zhangti.utalk.agent.tool.local.TakePhotoTool
 import com.zhangti.utalk.agent.tool.mcp.McpServerConfig
 import com.zhangti.utalk.agent.tool.mcp.McpToolProvider
 import com.zhangti.utalk.agent.tool.model.NamespacedAgentTool
@@ -42,6 +44,7 @@ class TravelToolEnvironment private constructor(
             context: AgentContextStore,
             appContext: Context,
             locationPermissionGate: LocationPermissionGate,
+            photoCaptureSource: PhotoCaptureSource,
             configs: List<McpServerConfig> = AppConfig.instance.remoteMcpServers,
             onProgress: (String) -> Unit = {},
         ): Pair<TravelToolEnvironment, ToolLoadReport> = coroutineScope {
@@ -121,6 +124,18 @@ class TravelToolEnvironment private constructor(
                     tool = timeTool,
                 )
             )
+
+            val photoTool = TakePhotoTool(photoCaptureSource)
+            catalog.register(CatalogTool(
+                metadata = ToolMetadata(
+                    id = TakePhotoTool.ID,
+                    provider = "device",
+                    domain = ToolDomain.SYSTEM,
+                    summary = photoTool.definition.description.orEmpty(),
+                    core = true,
+                ),
+                tool = photoTool,
+            ))
 
             val searchTool = SearchToolsTool(catalog, context)
             catalog.register(

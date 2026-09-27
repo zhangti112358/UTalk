@@ -41,13 +41,16 @@ class DeepSeekLlm(
     override fun close() = client.close()
 
     /** 把上层请求映射为 OpenAI 协议参数。 */
-    private fun buildParams(request: LlmRequest): ChatCompletionCreateParams =
+    internal fun buildParams(request: LlmRequest): ChatCompletionCreateParams =
         ChatCompletionCreateParams.builder().apply {
+            val imageBytes = request.messages.flatMap { it.images }.sumOf { java.io.File(it.path).length() }
+            check(imageBytes <= 32L * 1024 * 1024) { "会话图片总量过大，请开启新会话；未自动删除任何原图" }
             model(model)
             request.messages.forEach { message ->
                 when (message.role) {
                     LlmRole.SYSTEM -> addSystemMessage(message.content ?: "")
-                    LlmRole.USER -> addUserMessage(message.content ?: "")
+                    LlmRole.USER -> if (message.images.isEmpty()) addUserMessage(message.content ?: "")
+                        else addMessage(ImageMessageAdapter.userMessage(message))
                     LlmRole.ASSISTANT -> {
                         if (message.toolCalls.isEmpty()) {
                             addAssistantMessage(message.content ?: "")

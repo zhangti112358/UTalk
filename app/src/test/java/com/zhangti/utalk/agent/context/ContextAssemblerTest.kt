@@ -11,6 +11,21 @@ import org.junit.Test
 
 class ContextAssemblerTest {
     @Test
+    fun `original photo remains in subsequent turns`() {
+        val store = InMemoryAgentContextStore()
+        store.append(UserInputContext("看一下这个花"))
+        store.append(ImageContext("/private/photo.jpg", "2026-09-27T10:00:00Z"))
+        store.append(AssistantOutputContext("这是一朵花。"))
+        store.append(UserInputContext("花瓣有斑点吗"))
+
+        val request = ContextAssembler(ToolCatalog()).assemble(store.snapshot())
+
+        assertEquals("/private/photo.jpg", request.messages.flatMap { it.images }.single().path)
+        assertEquals(LlmRole.USER, request.messages.single { it.images.isNotEmpty() }.role)
+        assertEquals("花瓣有斑点吗", request.messages.last().content)
+    }
+
+    @Test
     fun `assembles messages and active tools independently`() {
         val catalog = ToolCatalog().apply {
             register(

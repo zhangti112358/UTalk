@@ -26,7 +26,10 @@ data class LlmMessage(
     val content: String? = null,
     val toolCalls: List<LlmToolCall> = emptyList(),
     val toolCallId: String? = null,
+    val images: List<LlmImage> = emptyList(),
 )
+
+data class LlmImage(val path: String, val mimeType: String = "image/jpeg")
 
 /** 一次工具调用（arguments 为 JSON 字符串）。 */
 data class LlmToolCall(
