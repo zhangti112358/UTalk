@@ -9,7 +9,7 @@ import org.json.JSONObject
  * 构建时注入 BuildConfig.LOCAL_CONFIG_JSON。
  *
  * 上层请用 [AppConfig] 数据类做类型化访问，不要直接调用这里。
- * 未来做「用户自己输入」时：在 AppConfig 里先查用户配置（DataStore）、查不到再回落本地值。
+ * 手机设置由 SettingsRepository 优先读取；此处只提供构建期回退值。
  */
 object LocalConfig {
 

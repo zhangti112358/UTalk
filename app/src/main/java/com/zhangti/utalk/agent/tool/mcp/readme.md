@@ -22,7 +22,7 @@ McpServerConfig(
 )
 ```
 
-服务列表配置在 `AppConfig.remoteMcpServers`（key 来自 secrets.properties）。
+服务列表配置在 `AppConfig.remoteMcpServers`（手机设置优先，未填时取构建期 `secrets.properties`）。滴滴环境由设置页切换，默认沙盒。
 
 ### `McpToolProvider`（服务接入）
 

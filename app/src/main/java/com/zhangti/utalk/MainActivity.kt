@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.zhangti.utalk.agent.llm.LlmChatActivity
 import com.zhangti.utalk.agent.ui.TextAgentActivity
+import com.zhangti.utalk.settings.SettingsActivity
 import com.zhangti.utalk.speech.asr.AsrTestActivity
 import com.zhangti.utalk.speech.tts.TtsTestActivity
 import androidx.compose.foundation.layout.Arrangement
@@ -80,6 +81,10 @@ class MainActivity : ComponentActivity() {
                         }) {
                             Text("运行 Agent")
                         }
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = {
+                            startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                        }) { Text("设置") }
                     }
                 }
             }
