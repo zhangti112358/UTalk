@@ -53,6 +53,28 @@ class EncryptedSettingsStore(context: Context, prefsName: String = PREFS_NAME) {
         check(editor.commit()) { "保存 API key 失败" }
     }
 
+    fun commonInfo(): String? {
+        val encoded = prefs.getString(COMMON_INFO, null) ?: return null
+        val bytes = Base64.decode(encoded, Base64.NO_WRAP)
+        require(bytes.size > 12) { "保存的常用信息数据损坏" }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, bytes.copyOfRange(0, 12)))
+        return String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8)
+    }
+
+    fun saveCommonInfo(value: String) {
+        require(value.length <= MAX_COMMON_INFO_LENGTH) { "常用信息最多 $MAX_COMMON_INFO_LENGTH 字" }
+        val editor = prefs.edit()
+        if (value.isBlank()) editor.remove(COMMON_INFO)
+        else {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, key)
+            val encrypted = cipher.iv + cipher.doFinal(value.trim().toByteArray(Charsets.UTF_8))
+            editor.putString(COMMON_INFO, Base64.encodeToString(encrypted, Base64.NO_WRAP))
+        }
+        check(editor.commit()) { "保存常用信息失败" }
+    }
+
     fun didiEnvironment(): DiDiEnvironment =
         runCatching { DiDiEnvironment.valueOf(prefs.getString(DIDI_ENV, DiDiEnvironment.SANDBOX.name)!!) }
             .getOrDefault(DiDiEnvironment.SANDBOX)
@@ -63,7 +85,9 @@ class EncryptedSettingsStore(context: Context, prefsName: String = PREFS_NAME) {
 
     companion object {
         const val PREFS_NAME = "utalk_private_settings"
+        const val MAX_COMMON_INFO_LENGTH = 4000
         private const val KEY_ALIAS = "utalk_api_keys_v1"
         private const val DIDI_ENV = "didi_environment"
+        private const val COMMON_INFO = "common_info"
     }
 }

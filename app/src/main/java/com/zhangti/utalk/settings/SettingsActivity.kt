@@ -58,6 +58,7 @@ private fun SettingsScreen() {
     var didiEnvironment by remember { mutableStateOf(SettingsRepository.didiEnvironment()) }
     var pendingProduction by remember { mutableStateOf(false) }
     var importText by remember { mutableStateOf("") }
+    var commonInfo by remember { mutableStateOf(SettingsRepository.commonInfo()) }
     var status by remember { mutableStateOf("") }
 
     Column(
@@ -66,6 +67,25 @@ private fun SettingsScreen() {
     ) {
         Text("设置", style = MaterialTheme.typography.headlineSmall)
         Text("更改后，重新打开 Agent 或语音页面生效。未填写的密钥会使用本地构建配置。")
+
+        Spacer(Modifier.height(4.dp))
+        Text("常用信息", style = MaterialTheme.typography.titleMedium)
+        Text("可填写常用地点、偏好等；会加入每次 Agent 会话的系统提示词。不要填写不希望发送给模型的信息。")
+        OutlinedTextField(
+            value = commonInfo,
+            onValueChange = { if (it.length <= EncryptedSettingsStore.MAX_COMMON_INFO_LENGTH) commonInfo = it },
+            label = { Text("例如：常用出发地、座位偏好") },
+            minLines = 4,
+            maxLines = 8,
+            supportingText = { Text("${commonInfo.length}/${EncryptedSettingsStore.MAX_COMMON_INFO_LENGTH} 字；留空并保存可清除") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Button(onClick = {
+            status = runCatching {
+                SettingsRepository.saveCommonInfo(commonInfo)
+                "常用信息已保存；重新打开 Agent 或语音页面生效"
+            }.getOrElse { "保存失败：${it.javaClass.simpleName}" }
+        }) { Text("保存常用信息") }
 
         Spacer(Modifier.height(4.dp))
         Text("滴滴 MCP 环境", style = MaterialTheme.typography.titleMedium)

@@ -11,6 +11,7 @@ import com.zhangti.utalk.agent.llm.DeepSeekLlm
 import com.zhangti.utalk.agent.tool.execution.CatalogToolInvoker
 import com.zhangti.utalk.agent.tool.local.LocationPermissionGate
 import com.zhangti.utalk.agent.tool.local.PhotoCaptureSource
+import com.zhangti.utalk.settings.SettingsRepository
 import java.io.Closeable
 
 class TextAgentSession private constructor(
@@ -76,7 +77,7 @@ class TextAgentSession private constructor(
             onProgress: (String) -> Unit = {},
         ): Pair<TextAgentSession, ToolLoadReport> {
             val context = InMemoryAgentContextStore(
-                listOf(SystemPromptContext(SYSTEM_PROMPT))
+                listOf(SystemPromptContext(CommonInfoPrompt.append(SYSTEM_PROMPT, SettingsRepository.commonInfo())))
             )
             val (environment, report) = TravelToolEnvironment.load(
                 context,

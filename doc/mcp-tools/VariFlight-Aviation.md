@@ -68,6 +68,45 @@ MCP 地址: https://ai.variflight.com/servers/aviation/mcp?api_key=***
             ],
             "default": null,
             "title": "Arrcity"
+        },
+        "limit": {
+            "anyOf": [
+                {
+                    "description": "Optional. Maximum number of results to return. Omit to return all results.",
+                    "type": "integer"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Limit"
+        },
+        "offset": {
+            "anyOf": [
+                {
+                    "description": "Optional. Number of results to skip, for fetching the next page. Use next_offset from the previous response. Each page is a separate billed call.",
+                    "type": "integer"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Offset"
+        },
+        "detail": {
+            "anyOf": [
+                {
+                    "description": "Optional. 'summary' returns only the core fields of each result; 'full' returns every field. Defaults to 'full'.",
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Detail"
         }
     },
     "required": [
@@ -152,6 +191,45 @@ MCP 地址: https://ai.variflight.com/servers/aviation/mcp?api_key=***
             "description": "Arrival city IATA 3-letter code (e.g. SHA for Shanghai, LAX for Los Angeles)",
             "title": "Arrcity",
             "type": "string"
+        },
+        "limit": {
+            "anyOf": [
+                {
+                    "description": "Optional. Maximum number of results to return. Omit to return all results.",
+                    "type": "integer"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Limit"
+        },
+        "offset": {
+            "anyOf": [
+                {
+                    "description": "Optional. Number of results to skip, for fetching the next page. Use next_offset from the previous response. Each page is a separate billed call.",
+                    "type": "integer"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Offset"
+        },
+        "detail": {
+            "anyOf": [
+                {
+                    "description": "Optional. 'summary' returns only the core fields of each result; 'full' returns every field. Defaults to 'full'.",
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Detail"
         }
     },
     "required": [

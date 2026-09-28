@@ -16,6 +16,8 @@ object SettingsRepository {
     fun savedKey(name: String): String? = store?.savedKey(name)
     fun resolvedKey(name: String): String = savedKey(name)?.takeIf(String::isNotBlank) ?: LocalConfig[name]
     fun saveKeys(values: Map<String, String>) = requireNotNull(store).saveKeys(values)
+    fun commonInfo(): String = store?.commonInfo().orEmpty()
+    fun saveCommonInfo(value: String) = requireNotNull(store).saveCommonInfo(value)
     fun didiEnvironment(): DiDiEnvironment = store?.didiEnvironment() ?: DiDiEnvironment.SANDBOX
     fun setDiDiEnvironment(value: DiDiEnvironment) = requireNotNull(store).setDiDiEnvironment(value)
 }

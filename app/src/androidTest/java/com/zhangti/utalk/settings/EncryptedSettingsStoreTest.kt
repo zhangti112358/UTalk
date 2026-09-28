@@ -26,6 +26,13 @@ class EncryptedSettingsStoreTest {
             assertFalse(raw.contains("test-secret-value"))
             store.saveKeys(mapOf(KeyNames.DEEPSEEK to ""))
             assertNull(store.savedKey(KeyNames.DEEPSEEK))
+            store.saveCommonInfo("常用出发地：上海虹桥")
+            assertEquals("常用出发地：上海虹桥", store.commonInfo())
+            val rawInfo = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
+                .getString("common_info", null).orEmpty()
+            assertFalse(rawInfo.contains("上海虹桥"))
+            store.saveCommonInfo("")
+            assertNull(store.commonInfo())
             assertEquals(DiDiEnvironment.SANDBOX, store.didiEnvironment())
         } finally { context.deleteSharedPreferences(prefName) }
     }
