@@ -7,6 +7,10 @@
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="utalk_private_settings.xml" />
+    <exclude domain="database" path="agent_history.db" />
+    <exclude domain="database" path="agent_history.db-wal" />
+    <exclude domain="database" path="agent_history.db-shm" />
+    <exclude domain="file" path="agent_photos/" />
     <!--
    <include domain="sharedpref" path="."/>
    <exclude domain="sharedpref" path="device.xml"/>

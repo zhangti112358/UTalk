@@ -1,6 +1,6 @@
 package com.zhangti.utalk.agent.context
 
-/** 会话上下文存储；首版使用内存实现，之后可替换为持久化存储。 */
+/** 当前会话上下文存储；永久历史由独立的 RecordingContextStore/HistoryStore 记录。 */
 interface AgentContextStore {
     fun append(item: AgentContextItem)
     fun snapshot(): AgentContextSnapshot
@@ -28,4 +28,3 @@ class InMemoryAgentContextStore(
     @Synchronized
     override fun clear() = items.clear()
 }
-

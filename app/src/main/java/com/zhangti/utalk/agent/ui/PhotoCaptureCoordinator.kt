@@ -186,8 +186,7 @@ class PhotoCaptureCoordinator(private val activity: ComponentActivity) : PhotoCa
         permission?.complete(false)
         scope.cancel()
         releaseCamera()
-        // 只清理这个会话拥有的照片；不会操作系统相册。
-        directory.deleteRecursively()
+        // 已进入本机历史的原图必须跨会话保留；这里只释放相机，不删除照片。
     }
 
     private suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { continuation ->

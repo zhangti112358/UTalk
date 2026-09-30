@@ -10,7 +10,7 @@ import com.zhangti.utalk.agent.tool.model.ToolDefinitionAdapter
 /** 把厂商无关的 Agent 上下文组装成一次 LLM 请求。 */
 class ContextAssembler(
     private val catalog: ToolCatalog,
-    private val pipeline: ContextPipeline = ContextPipeline(),
+    private val pipeline: ContextPipeline = ContextPipeline(listOf(ModelContextPolicy())),
 ) {
     fun assemble(snapshot: AgentContextSnapshot): LlmRequest {
         val context = pipeline.apply(snapshot)

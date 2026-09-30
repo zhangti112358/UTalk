@@ -26,10 +26,10 @@ class AgentLoop(
         listener: AgentEventListener,
         cancellation: AgentCancellation = AgentCancellation(),
     ) {
-        context.append(UserInputContext(userText))
         val turn = ToolTurnContext(userText)
         var lastText = ""
         try {
+            context.append(UserInputContext(userText))
             repeat(maxModelCallsPerTurn) {
                 if (cancellation.isCancelled) return cancelled(listener)
                 val stream = model.stream(context.snapshot())

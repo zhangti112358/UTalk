@@ -10,5 +10,5 @@
 - `AgentEvents.kt`：定义流式文本、工具开始/结束、完成、失败和取消等运行事件。
 - `AgentCancellation.kt`：保存当前模型流并传播取消信号，使 UI 可以立即中断生成。
 - `ToolCallAccumulator.kt`：按照工具调用的稳定索引合并流式返回的名称、ID 和参数分片。
-- `TextAgentSession.kt`：文字与语音共用的 Agent 会话门面，创建上下文、工具环境和 DeepSeek 客户端，并允许语音层写入播报打断事实。
+- `TextAgentSession.kt`：文字与语音共用的 Agent 会话门面，每次创建全新内存上下文和持久化历史记录器，并允许语音层写入播报打断事实。
 - `CommonInfoPrompt.kt`：把设置页保存的少量常用信息作为参考资料附加到新会话的系统提示词。

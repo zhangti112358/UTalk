@@ -5,6 +5,8 @@ import com.zhangti.utalk.AppConfig
 import com.zhangti.utalk.agent.context.AgentContextStore
 import com.zhangti.utalk.agent.context.ToolAvailabilityContext
 import com.zhangti.utalk.agent.context.ToolAvailabilitySource
+import com.zhangti.utalk.agent.history.HistoryStore
+import com.zhangti.utalk.agent.history.SearchHistoryTool
 import com.zhangti.utalk.agent.tool.catalog.CatalogTool
 import com.zhangti.utalk.agent.tool.catalog.ToolCatalog
 import com.zhangti.utalk.agent.tool.catalog.ToolDomain
@@ -45,6 +47,7 @@ class TravelToolEnvironment private constructor(
             appContext: Context,
             locationPermissionGate: LocationPermissionGate,
             photoCaptureSource: PhotoCaptureSource,
+            history: HistoryStore,
             configs: List<McpServerConfig> = AppConfig.instance.remoteMcpServers,
             onProgress: (String) -> Unit = {},
         ): Pair<TravelToolEnvironment, ToolLoadReport> = coroutineScope {
@@ -150,6 +153,18 @@ class TravelToolEnvironment private constructor(
                     tool = searchTool,
                 )
             )
+            val historyTool = SearchHistoryTool(history)
+            catalog.register(CatalogTool(
+                metadata = ToolMetadata(
+                    id = SearchHistoryTool.ID,
+                    provider = "local",
+                    domain = ToolDomain.SYSTEM,
+                    summary = historyTool.definition.description.orEmpty(),
+                    keywords = setOf("历史对话", "聊天记录", "之前说过", "昨天聊过"),
+                    core = true,
+                ),
+                tool = historyTool,
+            ))
             catalog.coreToolIds().forEach {
                 context.append(ToolAvailabilityContext(it, ToolAvailabilitySource.CORE))
             }

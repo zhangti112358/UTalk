@@ -6,6 +6,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="utalk_private_settings.xml" />
+        <exclude domain="database" path="agent_history.db" />
+        <exclude domain="database" path="agent_history.db-wal" />
+        <exclude domain="database" path="agent_history.db-shm" />
+        <exclude domain="file" path="agent_photos/" />
         <!-- TODO: Use <include> and <exclude> to control what is backed up.
         <include .../>
         <exclude .../>
@@ -13,6 +17,10 @@
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="utalk_private_settings.xml" />
+        <exclude domain="database" path="agent_history.db" />
+        <exclude domain="database" path="agent_history.db-wal" />
+        <exclude domain="database" path="agent_history.db-shm" />
+        <exclude domain="file" path="agent_photos/" />
     </device-transfer>
     <!--
     <device-transfer>

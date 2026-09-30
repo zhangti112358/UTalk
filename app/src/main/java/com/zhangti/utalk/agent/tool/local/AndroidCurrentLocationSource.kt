@@ -21,6 +21,7 @@ fun interface LocationPermissionGate {
 class AndroidCurrentLocationSource(
     private val context: Context,
     private val permissionGate: LocationPermissionGate,
+    private val timeoutMillis: Long = 20_000,
 ) : CurrentLocationSource {
     override suspend fun read(): DeviceLocation {
         if (!permissionGate.ensureGranted()) {
@@ -40,7 +41,7 @@ class AndroidCurrentLocationSource(
         if (providers.isEmpty()) throw IllegalStateException("手机定位服务未开启，或没有可用的定位来源")
 
         val fix = try {
-            withTimeoutOrNull(20_000) {
+            withTimeoutOrNull(timeoutMillis) {
                 suspendCancellableCoroutine<Location> { continuation ->
                     val listener = object : LocationListener {
                         override fun onLocationChanged(location: Location) {
@@ -66,7 +67,7 @@ class AndroidCurrentLocationSource(
             }
         } catch (error: SecurityException) {
             throw IllegalStateException("手机定位权限不足", error)
-        } ?: throw IllegalStateException("20 秒内未取得新定位，请检查 GPS 或网络定位后重试")
+        } ?: throw IllegalStateException("定位超时，请检查 GPS 或网络定位后重试")
 
         return DeviceLocation(
             latitude = fix.latitude,

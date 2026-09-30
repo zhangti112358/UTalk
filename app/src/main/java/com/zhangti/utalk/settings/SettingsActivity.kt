@@ -67,6 +67,7 @@ private fun SettingsScreen() {
     ) {
         Text("设置", style = MaterialTheme.typography.headlineSmall)
         Text("更改后，重新打开 Agent 或语音页面生效。未填写的密钥会使用本地构建配置。")
+        Text("对话历史保存在本机；每次打开 Agent 都是新会话。已有定位权限时，每轮会尝试记录地点；定位失败则留空。")
 
         Spacer(Modifier.height(4.dp))
         Text("常用信息", style = MaterialTheme.typography.titleMedium)
