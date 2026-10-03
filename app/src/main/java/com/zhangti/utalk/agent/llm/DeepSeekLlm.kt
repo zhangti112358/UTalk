@@ -29,6 +29,7 @@ class DeepSeekLlm(
     private val baseUrl: String = com.zhangti.utalk.AppConfig.instance.deepseekBaseUrl,
     private val model: String = com.zhangti.utalk.AppConfig.instance.deepseekModel,
 ) : LlmClient, AutoCloseable {
+    val modelName: String get() = model
 
     private val client: OpenAIClient = OpenAIOkHttpClient.builder()
         .apiKey(apiKey)
@@ -49,7 +50,7 @@ class DeepSeekLlm(
             // DeepSeek 默认开启思考；语音对话优先及时响应，所有请求显式关闭。
             putAdditionalBodyProperty(
                 "thinking",
-                JsonValue.fromJsonNode(MAPPER.valueToTree(mapOf("type" to "disabled"))),
+                JsonValue.fromJsonNode(MAPPER.valueToTree(mapOf("type" to THINKING_MODE))),
             )
             request.messages.forEach { message ->
                 when (message.role) {
@@ -176,6 +177,7 @@ class DeepSeekLlm(
     }
 
     companion object {
+        const val THINKING_MODE = "disabled"
         private const val TAG = "DeepSeekLlm"
         private val MAPPER = ObjectMapper()
         private val END = Any()

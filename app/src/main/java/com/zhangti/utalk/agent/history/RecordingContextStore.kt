@@ -42,6 +42,9 @@ class RecordingContextStore(
     override fun snapshot(): AgentContextSnapshot = active.snapshot()
 
     @Synchronized
+    fun currentTurn(): Int = turn
+
+    @Synchronized
     private fun applyLocation(turn: Int, fix: DeviceLocation) {
         turnLocations[turn] = fix
         history.updateTurnLocation(sessionId, turn, fix)

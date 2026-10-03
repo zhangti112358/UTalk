@@ -13,6 +13,10 @@ class ContextAssembler(
     private val pipeline: ContextPipeline = ContextPipeline(listOf(ModelContextPolicy())),
 ) {
     fun assemble(snapshot: AgentContextSnapshot): LlmRequest {
+        return assembleWithReport(snapshot).request
+    }
+
+    fun assembleWithReport(snapshot: AgentContextSnapshot): AssembledContext {
         val context = pipeline.apply(snapshot)
         val messages = context.items.mapNotNull { item ->
             when (item) {
@@ -53,6 +57,28 @@ class ContextAssembler(
             .distinct()
         val tools = toolIds.mapNotNull(catalog::get)
             .map { ToolDefinitionAdapter.toLlmTool(it.tool.definition) }
-        return LlmRequest(messages = messages, tools = tools)
+        return AssembledContext(LlmRequest(messages = messages, tools = tools), ContextProjectionReport.between(snapshot, context))
+    }
+}
+
+data class AssembledContext(val request: LlmRequest, val projection: ContextProjectionReport)
+
+data class ContextProjectionReport(
+    val originalItems: Int,
+    val includedItems: Int,
+    val removedByType: Map<String, Int>,
+    val truncatedToolCallIds: List<String>,
+) {
+    companion object {
+        fun between(original: AgentContextSnapshot, included: AgentContextSnapshot): ContextProjectionReport {
+            val before = original.items.groupingBy { it.javaClass.simpleName }.eachCount()
+            val after = included.items.groupingBy { it.javaClass.simpleName }.eachCount()
+            val oldResults = original.items.filterIsInstance<ToolResultContext>().associateBy { it.toolCallId }
+            val truncated = included.items.filterIsInstance<ToolResultContext>().filter {
+                oldResults[it.toolCallId]?.content?.let { old -> old != it.content } == true
+            }.map { it.toolCallId }
+            return ContextProjectionReport(original.items.size, included.items.size,
+                before.mapValues { (kind, count) -> count - (after[kind] ?: 0) }.filterValues { it > 0 }, truncated)
+        }
     }
 }

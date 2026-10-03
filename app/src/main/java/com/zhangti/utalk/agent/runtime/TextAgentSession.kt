@@ -4,6 +4,7 @@ import android.content.Context
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+import android.util.Log
 import com.zhangti.utalk.agent.bootstrap.ToolLoadReport
 import com.zhangti.utalk.agent.bootstrap.TravelToolEnvironment
 import com.zhangti.utalk.agent.context.ContextAssembler
@@ -26,6 +27,7 @@ class TextAgentSession private constructor(
     private val tools: TravelToolEnvironment,
     private val context: AgentContextStore,
     private val loop: AgentLoop,
+    val sessionId: String,
 ) : AgentConversation, Closeable {
     @Volatile private var currentRun: AgentCancellation? = null
 
@@ -106,10 +108,14 @@ class TextAgentSession private constructor(
             val assembler = ContextAssembler(environment.catalog)
             val loop = AgentLoop(
                 context = context,
-                model = AgentModelCaller(llm, assembler),
+                model = AgentModelCaller(llm, assembler) { assembled ->
+                    // 调试记录故障不能中断正常对话；不在日志中输出请求正文或密钥。
+                    runCatching { history.recordRequest(context.sessionId, context.currentTurn(), assembled, llm.modelName, DeepSeekLlm.THINKING_MODE) }
+                        .onFailure { Log.w("UTalkDebug", "Request recording failed: ${it.javaClass.simpleName}") }
+                },
                 tools = CatalogToolInvoker(environment.catalog),
             )
-            return TextAgentSession(llm, environment, context, loop) to report
+            return TextAgentSession(llm, environment, context, loop, context.sessionId) to report
         }
 
         private val SYSTEM_PROMPT = """

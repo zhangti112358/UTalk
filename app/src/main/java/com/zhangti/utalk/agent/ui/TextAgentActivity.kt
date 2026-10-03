@@ -43,6 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.zhangti.utalk.agent.debug.DebugScreen
+import com.zhangti.utalk.agent.history.SqliteHistoryStore
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.zhangti.utalk.agent.runtime.AgentEvent
@@ -87,6 +92,9 @@ private data class ChatLine(val id: Long, val role: LineRole, val text: String)
 @Composable
 private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, photoCapture: PhotoCaptureCoordinator) {
     val androidContext = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val debugRepository = remember { SqliteHistoryStore.get(androidContext.applicationContext) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val sessionRef = remember { AtomicReference<TextAgentSession?>() }
     val voiceRef = remember { AtomicReference<VoiceConversationController?>() }
@@ -99,6 +107,8 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
     var voiceEnabled by remember { mutableStateOf(false) }
     var streamingText by remember { mutableStateOf("") }
     var nextId by remember { mutableStateOf(1L) }
+    var debugVisible by remember { mutableStateOf(false) }
+    var currentSessionId by remember { mutableStateOf<String?>(null) }
 
     fun addLine(role: LineRole, text: String) {
         lines = lines + ChatLine(nextId++, role, text)
@@ -213,6 +223,7 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
             ) { progress -> mainHandler.post { status = progress } }
         }
         sessionRef.set(created.first)
+        currentSessionId = created.first.sessionId
         ready = true
         status = if (created.second.errors.isEmpty()) {
             "已加载 ${created.second.loadedTools} 个工具"
@@ -277,10 +288,13 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
         session.send(text, AgentEventListener { event -> mainHandler.post { handleAgentEvent(event) } })
     }
 
+    // Debug 是覆盖层，整个 AgentScreen 仍在组合树中，控制器不会因切页被关闭。
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .safeDrawingPadding(),
+            .safeDrawingPadding()
+            .then(if (debugVisible) Modifier.clearAndSetSemantics { } else Modifier),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(
@@ -288,7 +302,13 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("UTalk Agent", style = MaterialTheme.typography.titleLarge)
+                Text("UTalk Agent", style = MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.weight(1f))
+                OutlinedButton(onClick = {
+                    focusManager.clearFocus()
+                    keyboard?.hide()
+                    debugVisible = true
+                }, enabled = ready) { Text("Debug") }
+                Spacer(Modifier.width(8.dp))
                 OutlinedButton(
                     onClick = { toggleVoice() },
                     enabled = ready && (!running || voiceEnabled),
@@ -340,6 +360,8 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
                 Text(if (running) "停止" else "发送")
             }
         }
+    }
+    if (debugVisible) DebugScreen(debugRepository, currentSessionId, status, onClose = { debugVisible = false })
     }
 }
 

@@ -13,13 +13,26 @@ import com.zhangti.utalk.agent.context.ToolAvailabilityContext
 import com.zhangti.utalk.agent.context.ToolResultContext
 import com.zhangti.utalk.agent.context.UserInputContext
 import com.zhangti.utalk.agent.tool.local.DeviceLocation
+import com.zhangti.utalk.agent.context.AssembledContext
+import com.zhangti.utalk.agent.debug.DebugRepository
+import com.zhangti.utalk.agent.debug.DebugSession
+import com.zhangti.utalk.agent.debug.DebugTurn
+import com.zhangti.utalk.agent.debug.DebugEvent
+import com.zhangti.utalk.agent.debug.DebugToolCall
+import com.zhangti.utalk.agent.debug.DebugRequest
+import com.zhangti.utalk.agent.debug.DebugRequestSummary
+import com.zhangti.utalk.agent.debug.RequestSnapshotCodec
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
 /** 仅本机的追加式完整记录；模型上下文裁剪不会修改本库。 */
 class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME) : SQLiteOpenHelper(
-    context.applicationContext, databaseName, null, 1,
-), HistoryStore {
+    context.applicationContext, databaseName, null, 2,
+), HistoryStore, DebugRepository {
+    private val revision = MutableStateFlow(0L)
+    override val changes = revision.asStateFlow()
     init { setWriteAheadLoggingEnabled(true) }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -44,10 +57,36 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
         )""")
         db.execSQL("CREATE INDEX events_turn ON events(session_id, turn_no, id)")
         db.execSQL("CREATE INDEX events_time ON events(occurred_at)")
+        createRequestsTable(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        error("历史数据库需要显式迁移：$oldVersion → $newVersion")
+        if (oldVersion < 2) createRequestsTable(db)
+    }
+
+    private fun createRequestsTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE model_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL, turn_no INTEGER NOT NULL, occurred_at INTEGER NOT NULL,
+            message_count INTEGER NOT NULL, tool_count INTEGER NOT NULL,
+            removed_items INTEGER NOT NULL, truncated_results INTEGER NOT NULL,
+            payload TEXT NOT NULL, projection TEXT NOT NULL
+        )""")
+        db.execSQL("CREATE INDEX requests_session ON model_requests(session_id, id)")
+    }
+
+    @Synchronized
+    fun recordRequest(sessionId: String, turn: Int, assembled: AssembledContext, model: String, thinkingMode: String) {
+        val report = assembled.projection
+        val values = ContentValues().apply {
+            put("session_id", sessionId); put("turn_no", turn); put("occurred_at", System.currentTimeMillis())
+            put("message_count", assembled.request.messages.size); put("tool_count", assembled.request.tools.size)
+            put("removed_items", report.removedByType.values.sum()); put("truncated_results", report.truncatedToolCallIds.size)
+            put("payload", RequestSnapshotCodec.encode(assembled.request, model, thinkingMode))
+            put("projection", RequestSnapshotCodec.encode(report))
+        }
+        writableDatabase.insertOrThrow("model_requests", null, values)
+        revision.value++
     }
 
     @Synchronized
@@ -94,6 +133,7 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
             }
         }
         check(writableDatabase.insertOrThrow("events", null, values) > 0)
+        revision.value++
     }
 
     @Synchronized
@@ -105,7 +145,67 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
             put("location_at", location.timestampMillis)
         }
         writableDatabase.update("events", values, "session_id=? AND turn_no=?", arrayOf(sessionId, turn.toString()))
+        revision.value++
     }
+
+    @Synchronized
+    override fun sessions(limit: Int): List<DebugSession> = buildList {
+        readableDatabase.rawQuery("""SELECT session_id, MIN(occurred_at), MAX(occurred_at),
+            COUNT(DISTINCT CASE WHEN turn_no > 0 THEN turn_no END),
+            (SELECT substr(content,1,100) FROM events u WHERE u.session_id=e.session_id AND u.kind='user' ORDER BY u.id LIMIT 1)
+            FROM events e GROUP BY session_id ORDER BY MAX(occurred_at) DESC LIMIT ${limit.coerceAtLeast(1)}""", null).use { cursor ->
+            while (cursor.moveToNext()) add(DebugSession(cursor.getString(0), cursor.getLong(1), cursor.getLong(2), cursor.getInt(3), cursor.getString(4).orEmpty()))
+        }
+    }
+
+    @Synchronized
+    override fun turns(sessionId: String, limit: Int): List<DebugTurn> = buildList {
+        readableDatabase.rawQuery("""SELECT turn_no, MIN(occurred_at), COUNT(*),
+            (SELECT substr(content,1,100) FROM events u WHERE u.session_id=e.session_id AND u.turn_no=e.turn_no AND u.kind='user' ORDER BY u.id LIMIT 1)
+            FROM events e WHERE session_id=? GROUP BY turn_no ORDER BY turn_no DESC LIMIT ${limit.coerceAtLeast(1)}""", arrayOf(sessionId)).use { cursor ->
+            while (cursor.moveToNext()) add(DebugTurn(cursor.getInt(0), cursor.getLong(1), cursor.getInt(2), cursor.getString(3).orEmpty()))
+        }
+    }
+
+    @Synchronized
+    override fun events(sessionId: String, turn: Int): List<DebugEvent> = buildList {
+        readableDatabase.rawQuery("""SELECT id,kind,occurred_at,content,tool_calls,tool_call_id,tool_name,is_error,
+            image_path,captured_at,latitude,longitude,accuracy_meters,location_at
+            FROM events WHERE session_id=? AND turn_no=? ORDER BY id""", arrayOf(sessionId, turn.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                val calls = mutableListOf<DebugToolCall>()
+                cursor.getString(4)?.let { raw ->
+                    val array = JSONArray(raw)
+                    for (index in 0 until array.length()) array.getJSONObject(index).let {
+                        calls += DebugToolCall(it.getString("id"), it.getString("name"), it.getString("arguments"))
+                    }
+                }
+                add(DebugEvent(cursor.getLong(0), cursor.getString(1), cursor.getLong(2), cursor.getString(3), calls,
+                    cursor.getString(5), cursor.getString(6), cursor.getInt(7) != 0, cursor.getString(8), cursor.getString(9),
+                    cursor.getDoubleOrNull(10), cursor.getDoubleOrNull(11), cursor.getFloatOrNull(12),
+                    if (cursor.isNull(13)) null else cursor.getLong(13)))
+            }
+        }
+    }
+
+    @Synchronized
+    override fun requests(sessionId: String, limit: Int): List<DebugRequestSummary> = buildList {
+        readableDatabase.rawQuery("""SELECT id,turn_no,occurred_at,message_count,tool_count,removed_items,truncated_results
+            FROM model_requests WHERE session_id=? ORDER BY id DESC LIMIT ${limit.coerceAtLeast(1)}""", arrayOf(sessionId)).use { cursor ->
+            while (cursor.moveToNext()) add(cursor.requestSummary())
+        }
+    }
+
+    @Synchronized
+    override fun request(id: Long): DebugRequest? = readableDatabase.rawQuery("""SELECT id,turn_no,occurred_at,
+        message_count,tool_count,removed_items,truncated_results,payload,projection
+        FROM model_requests WHERE id=?""", arrayOf(id.toString())).use { cursor ->
+        if (!cursor.moveToFirst()) null else DebugRequest(cursor.requestSummary(), cursor.getString(7), cursor.getString(8))
+    }
+
+    private fun android.database.Cursor.requestSummary() = DebugRequestSummary(
+        getLong(0), getInt(1), getLong(2), getInt(3), getInt(4), getInt(5), getInt(6),
+    )
 
     @Synchronized
     override fun search(query: String, afterMillis: Long?, beforeMillis: Long?, limit: Int): List<HistoryMatch> {

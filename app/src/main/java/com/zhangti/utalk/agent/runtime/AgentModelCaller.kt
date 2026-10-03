@@ -2,6 +2,7 @@ package com.zhangti.utalk.agent.runtime
 
 import com.zhangti.utalk.agent.context.AgentContextSnapshot
 import com.zhangti.utalk.agent.context.ContextAssembler
+import com.zhangti.utalk.agent.context.AssembledContext
 import com.zhangti.utalk.agent.llm.LlmClient
 import com.zhangti.utalk.agent.llm.LlmStream
 
@@ -9,8 +10,11 @@ import com.zhangti.utalk.agent.llm.LlmStream
 class AgentModelCaller(
     private val llm: LlmClient,
     private val assembler: ContextAssembler,
+    private val onRequest: ((AssembledContext) -> Unit)? = null,
 ) {
-    fun stream(context: AgentContextSnapshot): LlmStream =
-        llm.stream(assembler.assemble(context))
+    fun stream(context: AgentContextSnapshot): LlmStream {
+        val assembled = assembler.assembleWithReport(context)
+        onRequest?.invoke(assembled)
+        return llm.stream(assembled.request)
+    }
 }
-
