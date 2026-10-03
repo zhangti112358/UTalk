@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import org.json.JSONObject
 
 private fun sessionTime(millis: Long): String = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
@@ -102,7 +103,7 @@ fun DebugScreen(repository: DebugRepository, currentSessionId: String?, agentSta
                     }
                     if (turns.isEmpty()) item { Text("暂无历史记录") }
                 } else {
-                    items(requests, key = { it.id }) { request -> RequestCard(repository, request) }
+                    items(requests, key = { it.id }) { request -> RequestCard(repository, request, revision) }
                     if (requests.isEmpty()) item { Text("暂无模型请求快照；发起下一轮对话后会自动记录。") }
                 }
                 if ((if (tab == 0) turns.size else requests.size) >= itemLimit) item {
@@ -186,12 +187,12 @@ private fun EventDetail(event: DebugEvent, results: Map<Pair<Long, Int>, DebugEv
 }
 
 @Composable
-private fun RequestCard(repository: DebugRepository, summary: DebugRequestSummary) {
+private fun RequestCard(repository: DebugRepository, summary: DebugRequestSummary, revision: Long) {
     var expanded by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<DebugRequest?>(null) }
     var error by remember { mutableStateOf("") }
-    LaunchedEffect(expanded, summary.id) {
-        if (expanded && detail == null) runCatching { withContext(Dispatchers.IO) { repository.request(summary.id) } }
+    LaunchedEffect(expanded, summary.id, revision) {
+        if (expanded) runCatching { withContext(Dispatchers.IO) { repository.request(summary.id) } }
             .onSuccess { detail = it; error = if (it == null) "记录不存在" else "" }.onFailure {
                 if (it is CancellationException) throw it
                 error = "读取失败：${it.message}"
@@ -203,7 +204,18 @@ private fun RequestCard(repository: DebugRepository, summary: DebugRequestSummar
         Text("移出 ${summary.removedItems} 条上下文 · 截断 ${summary.truncatedResults} 个工具结果")
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         detail?.let {
+            val budget = remember(it.projection) { runCatching { JSONObject(it.projection).optJSONObject("token_budget") }.getOrNull() }
+            budget?.optJSONObject("after")?.let { estimate ->
+                Text("输入估算：${estimate.optLong("total")} Token（非实际计数）")
+                Text("系统 ${estimate.optLong("system")} · 工具定义 ${estimate.optLong("tool_definitions")} · 对话 ${estimate.optLong("dialogue")} · 工具历史 ${estimate.optLong("tool_history")} · 图片 ${estimate.optLong("images")}",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            val usage = remember(it.usage) { it.usage?.let { raw -> runCatching { JSONObject(raw) }.getOrNull() } }
+            Text(usage?.let { actual -> "实际用量：输入 ${actual.optLong("prompt_tokens")} · 输出 ${actual.optLong("completion_tokens")} · 合计 ${actual.optLong("total_tokens")}" }
+                ?: "实际用量未收到（请求未结束、中断或旧版记录）；预算仍使用本地估算。",
+                style = MaterialTheme.typography.bodySmall)
             DebugTextBlock("上下文裁剪记录", it.projection, json = true)
+            it.usage?.let { raw -> DebugTextBlock("服务端实际用量", raw, json = true) }
             DebugTextBlock("消息、系统提示词、工具定义与模型参数", it.payload, json = true)
         }
     }

@@ -25,4 +25,4 @@ data class DebugRequestSummary(
     val id: Long, val turn: Int, val occurredAt: Long, val messageCount: Int, val toolCount: Int,
     val removedItems: Int, val truncatedResults: Int,
 )
-data class DebugRequest(val summary: DebugRequestSummary, val payload: String, val projection: String)
+data class DebugRequest(val summary: DebugRequestSummary, val payload: String, val projection: String, val usage: String? = null)

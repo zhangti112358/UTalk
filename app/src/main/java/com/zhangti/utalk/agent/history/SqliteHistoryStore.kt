@@ -22,6 +22,7 @@ import com.zhangti.utalk.agent.debug.DebugToolCall
 import com.zhangti.utalk.agent.debug.DebugRequest
 import com.zhangti.utalk.agent.debug.DebugRequestSummary
 import com.zhangti.utalk.agent.debug.RequestSnapshotCodec
+import com.zhangti.utalk.agent.llm.LlmUsage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
@@ -29,7 +30,7 @@ import org.json.JSONObject
 
 /** 仅本机的追加式完整记录；模型上下文裁剪不会修改本库。 */
 class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME) : SQLiteOpenHelper(
-    context.applicationContext, databaseName, null, 2,
+    context.applicationContext, databaseName, null, 3,
 ), HistoryStore, DebugRepository {
     private val revision = MutableStateFlow(0L)
     override val changes = revision.asStateFlow()
@@ -62,6 +63,7 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createRequestsTable(db)
+        else if (oldVersion < 3) db.execSQL("ALTER TABLE model_requests ADD COLUMN usage TEXT")
     }
 
     private fun createRequestsTable(db: SQLiteDatabase) {
@@ -70,13 +72,13 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
             session_id TEXT NOT NULL, turn_no INTEGER NOT NULL, occurred_at INTEGER NOT NULL,
             message_count INTEGER NOT NULL, tool_count INTEGER NOT NULL,
             removed_items INTEGER NOT NULL, truncated_results INTEGER NOT NULL,
-            payload TEXT NOT NULL, projection TEXT NOT NULL
+            payload TEXT NOT NULL, projection TEXT NOT NULL, usage TEXT
         )""")
         db.execSQL("CREATE INDEX requests_session ON model_requests(session_id, id)")
     }
 
     @Synchronized
-    fun recordRequest(sessionId: String, turn: Int, assembled: AssembledContext, model: String, thinkingMode: String) {
+    fun recordRequest(sessionId: String, turn: Int, assembled: AssembledContext, model: String, thinkingMode: String): Long {
         val report = assembled.projection
         val values = ContentValues().apply {
             put("session_id", sessionId); put("turn_no", turn); put("occurred_at", System.currentTimeMillis())
@@ -85,7 +87,15 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
             put("payload", RequestSnapshotCodec.encode(assembled.request, model, thinkingMode))
             put("projection", RequestSnapshotCodec.encode(report))
         }
-        writableDatabase.insertOrThrow("model_requests", null, values)
+        val id = writableDatabase.insertOrThrow("model_requests", null, values)
+        revision.value++
+        return id
+    }
+
+    @Synchronized
+    fun recordUsage(requestId: Long, usage: LlmUsage) {
+        val values = ContentValues().apply { put("usage", RequestSnapshotCodec.encode(usage)) }
+        writableDatabase.update("model_requests", values, "id=?", arrayOf(requestId.toString()))
         revision.value++
     }
 
@@ -198,9 +208,9 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
 
     @Synchronized
     override fun request(id: Long): DebugRequest? = readableDatabase.rawQuery("""SELECT id,turn_no,occurred_at,
-        message_count,tool_count,removed_items,truncated_results,payload,projection
+        message_count,tool_count,removed_items,truncated_results,payload,projection,usage
         FROM model_requests WHERE id=?""", arrayOf(id.toString())).use { cursor ->
-        if (!cursor.moveToFirst()) null else DebugRequest(cursor.requestSummary(), cursor.getString(7), cursor.getString(8))
+        if (!cursor.moveToFirst()) null else DebugRequest(cursor.requestSummary(), cursor.getString(7), cursor.getString(8), cursor.getString(9))
     }
 
     private fun android.database.Cursor.requestSummary() = DebugRequestSummary(

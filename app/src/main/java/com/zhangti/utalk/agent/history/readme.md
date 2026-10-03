@@ -1,7 +1,7 @@
 # 本机对话历史
 
 - `HistoryStore.kt`：定义完整事件日志、每轮定位更新和历史检索的持久化接口。
-- `SqliteHistoryStore.kt`：用应用私有 SQLite 数据库追加保存原始上下文事件、时间与可选 GPS 元数据；另存模型调用快照，提供历史搜索及 Debug 全文读取。数据库 v1 到 v2 仅新增请求表，保留原事件。
+- `SqliteHistoryStore.kt`：用应用私有 SQLite 数据库追加保存原始上下文事件、时间与可选 GPS 元数据；另存模型调用快照和按请求 ID 关联的实际用量。数据库 v1 新增请求表、v2 到 v3 仅追加可空 usage 列，保留全部原事件与旧请求。
 - `RecordingContextStore.kt`：把事件同时写入当前内存会话和永久历史；定位在后台补齐，不阻塞模型响应。
 - `SearchHistoryTool.kt`：给 Agent 提供按需搜索旧对话的常驻工具，结果仅返回少量原文摘录。
 

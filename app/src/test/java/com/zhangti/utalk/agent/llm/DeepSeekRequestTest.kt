@@ -15,6 +15,8 @@ class DeepSeekRequestTest {
             for (tools in listOf(emptyList(), listOf(LlmTool("device_current_time", "时间", mapOf("type" to "object"))))) {
                 val params = llm.buildParams(LlmRequest(messages, tools))
                 assertEquals(expected, params._additionalBodyProperties()["thinking"])
+                assertEquals(JsonValue.fromJsonNode(ObjectMapper().valueToTree(mapOf("include_usage" to true))),
+                    params._additionalBodyProperties()["stream_options"])
             }
         } finally { llm.close() }
     }

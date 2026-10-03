@@ -10,8 +10,19 @@ import com.zhangti.utalk.agent.tool.model.ToolDefinitionAdapter
 /** 把厂商无关的 Agent 上下文组装成一次 LLM 请求。 */
 class ContextAssembler(
     private val catalog: ToolCatalog,
-    private val pipeline: ContextPipeline = ContextPipeline(listOf(ModelContextPolicy())),
+    pipeline: ContextPipeline? = null,
+    private val budgetConfig: ContextBudgetConfig = ContextBudgetConfig(),
 ) {
+    private val estimator = CalibratedTokenEstimator(ConservativeTokenEstimator { id ->
+        catalog.get(id)?.let { ToolDefinitionAdapter.toLlmTool(it.tool.definition) }
+    })
+    private val policy = ModelContextPolicy(estimator = estimator, config = budgetConfig)
+    private val defaultPipeline = pipeline == null
+    private val pipeline = pipeline ?: ContextPipeline(listOf(policy))
+
+    fun observeUsage(estimate: TokenEstimate?, actualInputTokens: Long) {
+        estimate?.let { estimator.observe(it.total, actualInputTokens) }
+    }
     fun assemble(snapshot: AgentContextSnapshot): LlmRequest {
         return assembleWithReport(snapshot).request
     }
@@ -57,7 +68,15 @@ class ContextAssembler(
             .distinct()
         val tools = toolIds.mapNotNull(catalog::get)
             .map { ToolDefinitionAdapter.toLlmTool(it.tool.definition) }
-        return AssembledContext(LlmRequest(messages = messages, tools = tools), ContextProjectionReport.between(snapshot, context))
+        val before = estimator.estimate(snapshot.items)
+        val after = estimator.estimate(context.items)
+        check(after.total <= budgetConfig.hardInputLimit) {
+            "上下文估算已接近模型硬上限，未发送请求；完整历史仍保留。请开启新会话或减少当前输入。"
+        }
+        return AssembledContext(LlmRequest(messages = messages, tools = tools, maxTokens = budgetConfig.outputReserve),
+            ContextProjectionReport.between(snapshot, context).copy(budget = ContextBudgetReport(
+                before, after, budgetConfig, if (defaultPipeline) policy.lastDecision else listOf("使用自定义上下文策略"), estimator.factor,
+            )))
     }
 }
 
@@ -68,6 +87,7 @@ data class ContextProjectionReport(
     val includedItems: Int,
     val removedByType: Map<String, Int>,
     val truncatedToolCallIds: List<String>,
+    val budget: ContextBudgetReport? = null,
 ) {
     companion object {
         fun between(original: AgentContextSnapshot, included: AgentContextSnapshot): ContextProjectionReport {
@@ -82,3 +102,8 @@ data class ContextProjectionReport(
         }
     }
 }
+
+data class ContextBudgetReport(
+    val before: TokenEstimate, val after: TokenEstimate, val config: ContextBudgetConfig, val decisions: List<String>,
+    val calibrationFactor: Double = 1.0,
+)

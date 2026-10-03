@@ -1,5 +1,7 @@
 # 参考信息
 
+- [上下文与工具 Token 容量分析](context-token-budget.md)：现有工具定义、历史调用样本、真实用量对照及 32K/16K 可保留轮数的估算。
+
 - [自动拍照工具](local-tools/device_take_photo.md)：相机权限、广角回退、原图保留和模型输入流程。
 
 ## 出行工具接口

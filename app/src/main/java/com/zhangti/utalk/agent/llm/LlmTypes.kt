@@ -53,7 +53,11 @@ data class LlmChunk(
     val toolCalls: List<LlmToolCallDelta> = emptyList(),
     /** 结束原因（stop/tool_calls/length 等），仅在最后一块出现 */
     val finishReason: String? = null,
+    val usage: LlmUsage? = null,
 )
+
+/** 服务端返回的单次请求实际用量，不是会话累计值；中断时可能缺失。 */
+data class LlmUsage(val promptTokens: Long, val completionTokens: Long, val totalTokens: Long)
 
 /** 流式工具调用分片：index 标识同一个调用，其余字段可能逐块补齐。 */
 data class LlmToolCallDelta(

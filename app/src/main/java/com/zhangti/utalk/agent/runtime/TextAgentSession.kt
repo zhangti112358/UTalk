@@ -106,12 +106,19 @@ class TextAgentSession private constructor(
             )
             val llm = DeepSeekLlm()
             val assembler = ContextAssembler(environment.catalog)
+            var requestId: Long? = null
             val loop = AgentLoop(
                 context = context,
-                model = AgentModelCaller(llm, assembler) { assembled ->
+                model = AgentModelCaller(llm, assembler, onUsage = { usage ->
+                    requestId?.let { id ->
+                        runCatching { history.recordUsage(id, usage) }
+                            .onFailure { Log.w("UTalkDebug", "Usage recording failed: ${it.javaClass.simpleName}") }
+                    }
+                }) { assembled ->
                     // 调试记录故障不能中断正常对话；不在日志中输出请求正文或密钥。
-                    runCatching { history.recordRequest(context.sessionId, context.currentTurn(), assembled, llm.modelName, DeepSeekLlm.THINKING_MODE) }
+                    requestId = runCatching { history.recordRequest(context.sessionId, context.currentTurn(), assembled, llm.modelName, DeepSeekLlm.THINKING_MODE) }
                         .onFailure { Log.w("UTalkDebug", "Request recording failed: ${it.javaClass.simpleName}") }
+                        .getOrNull()
                 },
                 tools = CatalogToolInvoker(environment.catalog),
             )

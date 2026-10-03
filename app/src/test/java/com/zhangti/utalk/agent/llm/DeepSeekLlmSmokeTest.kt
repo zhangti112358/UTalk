@@ -2,6 +2,7 @@ package com.zhangti.utalk.agent.llm
 
 import com.zhangti.utalk.AppConfig
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -28,14 +29,19 @@ class DeepSeekLlmSmokeTest {
             val text = StringBuilder()
             var finish: String? = null
             var chunks = 0
+            var usage: LlmUsage? = null
             while (true) {
                 val chunk = stream.next() ?: break
                 chunks++
                 chunk.text?.let { text.append(it) }
                 chunk.finishReason?.let { finish = it }
+                chunk.usage?.let { usage = it }
             }
             println("识别完成：${text}（${chunks} 块，finish=$finish）")
             assertTrue("应收到模型文本", text.isNotBlank())
+            assertNotNull("正常完成的流应返回实际用量", usage)
+            assertTrue(usage!!.promptTokens > 0 && usage!!.completionTokens > 0)
+            println("实际用量：$usage")
         } finally {
             llm.close()
         }

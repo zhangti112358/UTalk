@@ -7,7 +7,7 @@
 - `LlmTypes.kt`：定义消息、工具、工具调用分片、请求和流式返回等厂商无关数据类型。
 - `ImageMessageAdapter.kt`：在请求边界读取原图，构建标准 user 图片内容块与 Base64 data URL；缺失原图时明确失败。
 - `LlmClient.kt`：定义模型客户端和可中断流的最小接口，供 Agent 运行时依赖。
-- `DeepSeekLlm.kt`：基于 OpenAI 兼容协议实现 DeepSeek 流式文本与工具调用，并处理历史工具消息。所有请求显式发送 `thinking: {type: disabled}`，关闭默认思考模式，优先语音响应速度。
+- `DeepSeekLlm.kt`：基于 OpenAI 兼容协议实现 DeepSeek 流式文本、工具调用与历史工具消息；显式关闭思考模式并请求流式 usage，返回单次调用的实际输入、输出及总 Token 数。
 - `LlmChatActivity.kt`：不经过 Agent 的纯 LLM 聊天测试页面，用于单独验证模型流式输出和中断。
 
 ## 参考
@@ -38,7 +38,8 @@ fun close()            // 中断本次调用（关闭底层 HTTP 流，幂等）
 LlmRequest(messages: List<LlmMessage>, tools: List<LlmTool> = [], temperature: Float? = null, maxTokens: Int? = null)
 LlmMessage(role: SYSTEM/USER/ASSISTANT/TOOL, content: String?, toolCalls: List<LlmToolCall>, toolCallId: String?)
 LlmTool(name, description, schema: Map<String, Any?>)          // schema 为 JSON Schema 的 Map
-LlmChunk(text: String?, toolCalls: List<LlmToolCallDelta>, finishReason: String?)
+LlmChunk(text: String?, toolCalls: List<LlmToolCallDelta>, finishReason: String?, usage: LlmUsage?)
+LlmUsage(promptTokens, completionTokens, totalTokens)        // 单次 API 请求，不是会话累计
 LlmToolCallDelta(index, id?, name?, arguments?)                // 流式分片，由上层按 index 累积
 ```
 

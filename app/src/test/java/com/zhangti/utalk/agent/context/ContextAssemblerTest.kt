@@ -10,6 +10,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ContextAssemblerTest {
+    @Test(expected = IllegalStateException::class)
+    fun `protected input exceeding reserved hard boundary is rejected`() {
+        val assembler = ContextAssembler(ToolCatalog(), budgetConfig = ContextBudgetConfig(
+            modelLimit = 1000, outputReserve = 100, hardSafetyMargin = 100,
+        ))
+        assembler.assemble(AgentContextSnapshot(listOf(UserInputContext("中".repeat(2000)))))
+    }
     @Test
     fun `original photo remains in subsequent turns`() {
         val store = InMemoryAgentContextStore()

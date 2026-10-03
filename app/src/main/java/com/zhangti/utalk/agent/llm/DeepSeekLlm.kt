@@ -47,6 +47,8 @@ class DeepSeekLlm(
             val imageBytes = request.messages.flatMap { it.images }.sumOf { java.io.File(it.path).length() }
             check(imageBytes <= 32L * 1024 * 1024) { "会话图片总量过大，请开启新会话；未自动删除任何原图" }
             model(model)
+            putAdditionalBodyProperty("stream_options",
+                JsonValue.fromJsonNode(MAPPER.valueToTree(mapOf("include_usage" to true))))
             // DeepSeek 默认开启思考；语音对话优先及时响应，所有请求显式关闭。
             putAdditionalBodyProperty(
                 "thinking",
@@ -146,9 +148,9 @@ class DeepSeekLlm(
                         if (!closed) queue.put(chunk.toLlmChunk())
                     }
                 }
-                queue.offer(END)
+                queue.put(END)
             } catch (t: Throwable) {
-                if (!closed) queue.offer(t)
+                if (!closed) queue.put(t)
             } finally {
                 if (!closed) sr?.close()
             }
@@ -202,5 +204,6 @@ private fun ChatCompletionChunk.toLlmChunk(): LlmChunk {
         )
     }.orEmpty()
     val finishReason = choice?.finishReason()?.orElse(null)?.toString()
-    return LlmChunk(text = text, toolCalls = toolCalls, finishReason = finishReason)
+    val usage = usage().orElse(null)?.let { LlmUsage(it.promptTokens(), it.completionTokens(), it.totalTokens()) }
+    return LlmChunk(text = text, toolCalls = toolCalls, finishReason = finishReason, usage = usage)
 }

@@ -12,6 +12,7 @@ import com.zhangti.utalk.agent.llm.LlmMessage
 import com.zhangti.utalk.agent.llm.LlmRequest
 import com.zhangti.utalk.agent.llm.LlmRole
 import com.zhangti.utalk.agent.llm.LlmToolCall
+import com.zhangti.utalk.agent.llm.LlmUsage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -20,6 +21,32 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SqliteHistoryStoreTest {
+    @Test fun versionTwoUpgradePreservesRequestsAndStoresActualUsage() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "agent_usage_migration_test.db"
+        context.deleteDatabase(name)
+        try {
+            var id = 0L
+            SqliteHistoryStore(context, name).use { store ->
+                store.append("old", 1, 1000, UserInputContext("去机场"))
+                id = store.recordRequest("old", 1, AssembledContext(
+                    LlmRequest(listOf(LlmMessage(LlmRole.USER, "去机场"))),
+                    ContextProjectionReport(1, 1, emptyMap(), emptyList()),
+                ), "deepseek-flash", "disabled")
+                // 仅隔离测试库：回退到真实 v2 的请求表结构。
+                store.writableDatabase.execSQL("ALTER TABLE model_requests DROP COLUMN usage")
+                store.writableDatabase.version = 2
+            }
+            SqliteHistoryStore(context, name).use { store ->
+                assertTrue(store.request(id)!!.payload.contains("去机场"))
+                assertEquals(1, store.events("old", 1).size)
+                store.recordUsage(id, LlmUsage(100, 10, 110))
+            }
+            SqliteHistoryStore(context, name).use { store ->
+                assertTrue(store.request(id)!!.usage!!.contains("\"prompt_tokens\":100"))
+            }
+        } finally { context.deleteDatabase(name) }
+    }
     @Test fun versionOneUpgradePreservesFullHistoryAndAddsRequestSnapshots() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val name = "agent_debug_migration_test.db"
