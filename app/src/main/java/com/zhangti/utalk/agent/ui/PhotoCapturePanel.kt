@@ -41,6 +41,7 @@ fun PhotoCapturePanel(coordinator: PhotoCaptureCoordinator) {
         bitmap?.let {
             Image(it, "本次会话最近拍摄的照片", Modifier.fillMaxWidth().height(100.dp))
             Text(coordinator.latestLens)
+            if (coordinator.latestGalleryStatus.isNotBlank()) Text(coordinator.latestGalleryStatus)
         }
     }
     if (coordinator.visible) {

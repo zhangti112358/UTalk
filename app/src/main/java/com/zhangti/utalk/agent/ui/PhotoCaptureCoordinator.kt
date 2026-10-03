@@ -3,6 +3,9 @@ package com.zhangti.utalk.agent.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
+import android.os.Build
+import android.os.SystemClock
+import android.util.Log
 import android.util.Size
 import android.view.Surface
 import androidx.activity.ComponentActivity
@@ -39,7 +42,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** 将拍摄请求桥接到前台页面；相机生命周期与 Agent/模型调用相互独立。 */
@@ -50,11 +52,16 @@ class PhotoCaptureCoordinator(private val activity: ComponentActivity) : PhotoCa
         private set
     var latestLens by mutableStateOf("")
         private set
+    var latestGalleryStatus by mutableStateOf("")
+        private set
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val executor = ContextCompat.getMainExecutor(activity)
+    private val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
+    private val gallerySaver = PhotoGallerySaver(activity.applicationContext)
     private val directory = File(activity.filesDir, "agent_photos/${UUID.randomUUID()}")
     private var pending: CompletableDeferred<CapturedPhoto>? = null
     private var permission: CompletableDeferred<Boolean>? = null
+    private var storagePermission: CompletableDeferred<Boolean>? = null
     private var provider: ProcessCameraProvider? = null
     private var preview: Preview? = null
     private var capture: ImageCapture? = null
@@ -62,6 +69,10 @@ class PhotoCaptureCoordinator(private val activity: ComponentActivity) : PhotoCa
     private val permissionLauncher = activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         permission?.complete(it)
         permission = null
+    }
+    private val storagePermissionLauncher = activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        storagePermission?.complete(it)
+        storagePermission = null
     }
 
     override suspend fun capture(): CapturedPhoto = withContext(Dispatchers.Main.immediate) {
@@ -79,10 +90,18 @@ class PhotoCaptureCoordinator(private val activity: ComponentActivity) : PhotoCa
             true
         }
         check(resumed == true) { "请保持 Agent 页面在前台后拍照" }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(
+                activity, Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ) != PackageManager.PERMISSION_GRANTED) {
+            val granted = CompletableDeferred<Boolean>()
+            storagePermission = granted
+            storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            granted.await()
+        }
         val request = CompletableDeferred<CapturedPhoto>()
         pending = request
         visible = true
-        try {
+        val photo = try {
             withTimeoutOrNull(30_000) { request.await() }
                 ?: throw IllegalStateException("拍照超时，请保持页面在前台后重试")
         } finally {
@@ -90,15 +109,24 @@ class PhotoCaptureCoordinator(private val activity: ComponentActivity) : PhotoCa
             visible = false
             releaseCamera()
         }
+        val saved = withContext(Dispatchers.IO) { runCatching { gallerySaver.save(File(photo.path)) } }
+        latestGalleryStatus = saved.fold(
+            onSuccess = { "已保存到系统相册" },
+            onFailure = { "相册保存失败：${it.message ?: "未知错误"}" },
+        )
+        photo.copy(galleryUri = saved.getOrNull()?.toString(), galleryError = saved.exceptionOrNull()?.let {
+            it.message ?: it.javaClass.simpleName
+        })
     }
 
     @androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
     @Suppress("DEPRECATION")
     fun open(view: PreviewView) {
         val request = pending ?: return
+        val openedAt = SystemClock.elapsedRealtime()
         captureJob = scope.launch {
             try {
-                val cameraProvider = ProcessCameraProvider.getInstance(activity).await()
+                val cameraProvider = cameraProviderFuture.await(cancelFutureOnCancellation = false)
                 if (pending !== request || !visible) return@launch
                 provider = cameraProvider
                 val rear = cameraProvider.availableCameraInfos.filter {
@@ -125,22 +153,30 @@ class PhotoCaptureCoordinator(private val activity: ComponentActivity) : PhotoCa
                 capture = c
                 val camera = cameraProvider.bindToLifecycle(activity, selector, p, c)
                 val zoom = camera.cameraInfo.zoomState.value?.minZoomRatio ?: 1f
-                camera.cameraControl.setZoomRatio(zoom).await()
-                withTimeout(8_000) { awaitPreview(view) }
-                val point = view.meteringPointFactory.createPoint(view.width / 2f, view.height / 2f)
-                withTimeoutOrNull(3_000) {
-                    runCatching { camera.cameraControl.startFocusAndMetering(FocusMeteringAction.Builder(point).build()).await() }
+                val zoomUpdate = camera.cameraControl.setZoomRatio(zoom)
+                // 一个共享等待预算；相机已就绪时立即拍摄，不做固定倒计时。
+                val remainingPreparationMillis = (1_500L - (SystemClock.elapsedRealtime() - openedAt)).coerceAtLeast(0)
+                if (remainingPreparationMillis > 0) withTimeoutOrNull(remainingPreparationMillis) {
+                    zoomUpdate.await()
+                    awaitPreview(view)
+                    if (view.width > 0 && view.height > 0) {
+                        val point = view.meteringPointFactory.createPoint(view.width / 2f, view.height / 2f)
+                        camera.cameraControl.startFocusAndMetering(FocusMeteringAction.Builder(point).build()).await()
+                    }
                 }
                 if (pending !== request || !visible) return@launch
                 directory.mkdirs()
                 val file = File.createTempFile("photo_", ".jpg", directory)
                 val lens = if (zoom < 1f || rear.size > 1) "后置最广视角（${zoom}×）" else "后置主摄（超广角未向应用开放，已回退）"
+                Log.d("UTalkCamera", "Shutter requested after ${SystemClock.elapsedRealtime() - openedAt} ms")
                 c.takePicture(ImageCapture.OutputFileOptions.Builder(file).build(), executor,
                     object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                             if (pending === request && visible) {
+                                Log.d("UTalkCamera", "Photo saved after ${SystemClock.elapsedRealtime() - openedAt} ms")
                                 latestPhoto = file.absolutePath
                                 latestLens = lens
+                                latestGalleryStatus = "正在保存到系统相册…"
                                 request.complete(CapturedPhoto(file.absolutePath, Instant.now().toString(), lens))
                             } else file.delete()
                         }
@@ -184,17 +220,18 @@ class PhotoCaptureCoordinator(private val activity: ComponentActivity) : PhotoCa
         pending = null
         visible = false
         permission?.complete(false)
+        storagePermission?.complete(false)
         scope.cancel()
         releaseCamera()
         // 已进入本机历史的原图必须跨会话保留；这里只释放相机，不删除照片。
     }
 
-    private suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { continuation ->
+    private suspend fun <T> ListenableFuture<T>.await(cancelFutureOnCancellation: Boolean = true): T = suspendCancellableCoroutine { continuation ->
         addListener({
             if (continuation.isActive) {
                 try { continuation.resume(get()) } catch (error: Exception) { continuation.resumeWithException(error) }
             }
         }, executor)
-        continuation.invokeOnCancellation { cancel(true) }
+        if (cancelFutureOnCancellation) continuation.invokeOnCancellation { cancel(true) }
     }
 }

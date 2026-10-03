@@ -9,7 +9,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-data class CapturedPhoto(val path: String, val capturedAt: String, val lens: String)
+data class CapturedPhoto(
+    val path: String, val capturedAt: String, val lens: String,
+    val galleryUri: String? = null, val galleryError: String? = null,
+)
 
 fun interface PhotoCaptureSource {
     suspend fun capture(): CapturedPhoto
@@ -26,7 +29,12 @@ class TakePhotoTool(private val source: PhotoCaptureSource) : AgentTool {
     override suspend fun call(arguments: Map<String, Any?>): CallToolResult = try {
         val photo = source.capture()
         CallToolResult(
-            content = listOf(TextContent("拍摄成功，时间：${photo.capturedAt}；镜头：${photo.lens}。原图将在下一次模型请求中提供。")),
+            content = listOf(TextContent("拍摄成功，时间：${photo.capturedAt}；镜头：${photo.lens}。原图将在下一次模型请求中提供。" +
+                when {
+                    photo.galleryUri != null -> "照片已保存到系统相册。"
+                    photo.galleryError != null -> "原图已保留，但保存相册失败：${photo.galleryError}。"
+                    else -> ""
+                })),
             structuredContent = JsonObject(mapOf(
                 "photo_path" to JsonPrimitive(photo.path),
                 "captured_at" to JsonPrimitive(photo.capturedAt),

@@ -7,6 +7,7 @@
     <!-- 豆包 ASR / DeepSeek 等网络请求 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- 当前手机位置：只在 Agent 请求定位时申请运行时权限 -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
