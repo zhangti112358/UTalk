@@ -7,6 +7,7 @@ import com.openai.client.okhttp.OpenAIOkHttpClient
 import com.openai.core.JsonValue
 import com.openai.core.http.StreamResponse
 import com.openai.models.FunctionDefinition
+import com.openai.models.ReasoningEffort
 import com.openai.models.chat.completions.ChatCompletionAssistantMessageParam
 import com.openai.models.chat.completions.ChatCompletionChunk
 import com.openai.models.chat.completions.ChatCompletionCreateParams
@@ -47,9 +48,11 @@ class DeepSeekLlm(
             val imageBytes = request.messages.flatMap { it.images }.sumOf { java.io.File(it.path).length() }
             check(imageBytes <= 32L * 1024 * 1024) { "会话图片总量过大，请开启新会话；未自动删除任何原图" }
             model(model)
+            // DeepSeek Flash 默认会开启思考。同时发送标准 reasoning_effort=none 与
+            // DeepSeek 专用 thinking.type=disabled，避免 SDK/服务端兼容路径遗漏关闭开关。
+            reasoningEffort(ReasoningEffort.NONE)
             putAdditionalBodyProperty("stream_options",
                 JsonValue.fromJsonNode(MAPPER.valueToTree(mapOf("include_usage" to true))))
-            // DeepSeek 默认开启思考；语音对话优先及时响应，所有请求显式关闭。
             putAdditionalBodyProperty(
                 "thinking",
                 JsonValue.fromJsonNode(MAPPER.valueToTree(mapOf("type" to THINKING_MODE))),

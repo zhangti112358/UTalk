@@ -2,6 +2,7 @@ package com.zhangti.utalk.agent.llm
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.openai.core.JsonValue
+import com.openai.models.ReasoningEffort
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -14,6 +15,7 @@ class DeepSeekRequestTest {
             val messages = listOf(LlmMessage(LlmRole.USER, "现在几点"))
             for (tools in listOf(emptyList(), listOf(LlmTool("device_current_time", "时间", mapOf("type" to "object"))))) {
                 val params = llm.buildParams(LlmRequest(messages, tools))
+                assertEquals(ReasoningEffort.NONE, params.reasoningEffort().orElseThrow())
                 assertEquals(expected, params._additionalBodyProperties()["thinking"])
                 assertEquals(JsonValue.fromJsonNode(ObjectMapper().valueToTree(mapOf("include_usage" to true))),
                     params._additionalBodyProperties()["stream_options"])
