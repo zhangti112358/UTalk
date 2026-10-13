@@ -5,6 +5,8 @@ import com.zhangti.utalk.agent.runtime.AgentEvent
 import com.zhangti.utalk.agent.runtime.AgentEventListener
 import com.zhangti.utalk.agent.runtime.AgentConversation
 import com.zhangti.utalk.speech.asr.DoubaoStreamingAsrClient
+import com.zhangti.utalk.speech.asr.DoubaoAsr
+import com.zhangti.utalk.speech.asr.AsrAudioPacketizer
 import com.zhangti.utalk.speech.asr.StreamingAsrClient
 import com.zhangti.utalk.speech.audio.MicrophonePcmSource
 import com.zhangti.utalk.speech.audio.PcmAudioSource
@@ -15,6 +17,8 @@ import com.zhangti.utalk.speech.playback.StreamingSpeechPlayer
 import com.zhangti.utalk.speech.playback.StreamingSpeechPlayerFactory
 import com.zhangti.utalk.speech.vad.ContinuousVadProcessor
 import com.zhangti.utalk.speech.vad.SileroContinuousVadProcessor
+import java.io.ByteArrayOutputStream
+import org.json.JSONObject
 
 enum class VoiceConversationState {
     STOPPED,
@@ -52,6 +56,9 @@ class VoiceConversationController(
     private var active = false
     private var state = VoiceConversationState.STOPPED
     private var capturingAsr: StreamingAsrClient.Session? = null
+    private var asrPacketizer: AsrAudioPacketizer? = null
+    private var asrFinalizing = false
+    private var pendingSpeech: PendingSpeech? = null
     private var asrGeneration = 0L
     private var latestTranscript = ""
     private var agentRunning = false
@@ -84,6 +91,9 @@ class VoiceConversationController(
         audioSource.stop()
         capturingAsr?.cancel()
         capturingAsr = null
+        asrPacketizer = null
+        asrFinalizing = false
+        pendingSpeech = null
         if (agentRunning) agent.cancel()
         agentRunning = false
         player?.close()
@@ -116,19 +126,31 @@ class VoiceConversationController(
                     ) {
                         interruptPlaybackLocked()
                     }
-                    beginAsrLocked(bufferedBeforeCurrentFrame, playbackCandidate)
+                    if (capturingAsr == null) {
+                        beginAsrLocked(bufferedBeforeCurrentFrame, playbackCandidate)
+                    } else if (asrFinalizing && pendingSpeech == null) {
+                        pendingSpeech = PendingSpeech(playbackCandidate).also { it.append(bufferedBeforeCurrentFrame) }
+                    }
                 }
             }
 
-            capturingAsr?.let { session ->
-                if (activity.isSpeech) session.sendPcm(frame)
+            if (activity.isSpeech) {
+                val pending = pendingSpeech
+                if (asrFinalizing && pending != null) pending.append(frame)
+                else asrPacketizer?.append(frame)
             }
 
             if (activity.changed && !activity.isSpeech) {
-                capturingAsr?.finish()
-                if (capturingAsr != null) changeStateLocked(VoiceConversationState.RECOGNIZING)
-                else if (!agentRunning) changeStateLocked(VoiceConversationState.LISTENING)
-                capturingAsr = null
+                val pending = pendingSpeech
+                if (asrFinalizing && pending != null) {
+                    pending.ended = true
+                    changeStateLocked(VoiceConversationState.RECOGNIZING)
+                } else if (capturingAsr != null && !asrFinalizing) {
+                    asrPacketizer?.flush()
+                    capturingAsr?.finish()
+                    asrFinalizing = true
+                    changeStateLocked(VoiceConversationState.RECOGNIZING)
+                } else if (!agentRunning) changeStateLocked(VoiceConversationState.LISTENING)
             }
             preRoll.append(frame)
         }
@@ -154,36 +176,85 @@ class VoiceConversationController(
                     if (!active || generation != asrGeneration) return
                     val transcript = latestTranscript.trim()
                     latestTranscript = ""
+                    releaseCompletedAsrLocked()
+                    startPendingSpeechLocked()
                     if (playbackCandidate && EchoTranscriptFilter.isLikelyEcho(
                             transcript,
                             responseText.toString(),
                         )) {
-                        when {
-                            player?.isAudible == true -> changeStateLocked(VoiceConversationState.SPEAKING)
-                            agentRunning -> changeStateLocked(VoiceConversationState.THINKING)
-                            player == null -> changeStateLocked(VoiceConversationState.LISTENING)
-                        }
+                        settleStateAfterAsrLocked()
                         return
                     }
                     if (transcript.isNotEmpty()) {
                         if (playbackCandidate && player != null) interruptPlaybackLocked()
                         submitTranscriptLocked(transcript)
                     }
-                    else if (!agentRunning) changeStateLocked(VoiceConversationState.LISTENING)
+                    else settleStateAfterAsrLocked()
                 }
             }
 
             override fun onError(throwable: Throwable) {
                 synchronized(this@VoiceConversationController) {
                     if (!active || generation != asrGeneration) return
-                    capturingAsr = null
+                    recordAsrErrorLocked(throwable, generation)
+                    releaseCompletedAsrLocked()
+                    startPendingSpeechLocked()
                     listener.onError(throwable)
-                    if (!agentRunning) changeStateLocked(VoiceConversationState.LISTENING)
+                    settleStateAfterAsrLocked()
                 }
             }
         })
         capturingAsr = session
-        if (initialPcm.isNotEmpty()) session.sendPcm(initialPcm)
+        asrFinalizing = false
+        asrPacketizer = AsrAudioPacketizer(session::sendPcm).also { it.sendInitial(initialPcm) }
+    }
+
+    private fun releaseCompletedAsrLocked() {
+        capturingAsr = null
+        asrPacketizer = null
+        asrFinalizing = false
+    }
+
+    /** 旧会话收到终态后，才把等待期间缓存的下一段语音交给新 ASR。 */
+    private fun startPendingSpeechLocked() {
+        val pending = pendingSpeech ?: return
+        pendingSpeech = null
+        val pcm = pending.bytes()
+        if (pcm.isEmpty()) return
+        beginAsrLocked(pcm, pending.playbackCandidate)
+        if (pending.ended) {
+            asrPacketizer?.flush()
+            capturingAsr?.finish()
+            asrFinalizing = true
+            changeStateLocked(VoiceConversationState.RECOGNIZING)
+        } else changeStateLocked(VoiceConversationState.SPEECH_DETECTED)
+    }
+
+    /** 旧 ASR 的迟到回调不能覆盖已经启动的新一段录音状态。 */
+    private fun settleStateAfterAsrLocked() {
+        when {
+            capturingAsr != null && asrFinalizing -> changeStateLocked(VoiceConversationState.RECOGNIZING)
+            capturingAsr != null -> changeStateLocked(VoiceConversationState.SPEECH_DETECTED)
+            player?.isAudible == true -> changeStateLocked(VoiceConversationState.SPEAKING)
+            agentRunning -> changeStateLocked(VoiceConversationState.THINKING)
+            else -> changeStateLocked(VoiceConversationState.LISTENING)
+        }
+    }
+
+    private fun recordAsrErrorLocked(throwable: Throwable, generation: Long) {
+        val service = throwable as? DoubaoAsr.ServiceException
+        val diagnostic = JSONObject().apply {
+            put("type", "asr_error")
+            put("message", throwable.message ?: throwable.javaClass.simpleName)
+            put("code", service?.code ?: JSONObject.NULL)
+            put("payload", service?.payload ?: JSONObject.NULL)
+            put("request_id", service?.requestId ?: JSONObject.NULL)
+            put("log_id", service?.logId ?: JSONObject.NULL)
+            put("generation", generation)
+            put("finalizing", asrFinalizing)
+            put("pending_audio_bytes", pendingSpeech?.size ?: 0)
+        }
+        agent.recordVoiceDiagnostic(diagnostic.toString())
     }
 
     private fun interruptPlaybackLocked() {
@@ -313,6 +384,9 @@ class VoiceConversationController(
         audioSource.stop()
         capturingAsr?.cancel()
         capturingAsr = null
+        asrPacketizer = null
+        asrFinalizing = false
+        pendingSpeech = null
         player?.close()
         player = null
         state = VoiceConversationState.ERROR
@@ -343,5 +417,17 @@ class VoiceConversationController(
         private const val PRE_ROLL_MS = 500
         private const val BYTES_PER_SECOND = 16_000 * 2
         private const val PRE_ROLL_BYTES = BYTES_PER_SECOND * PRE_ROLL_MS / 1000
+        private const val MAX_PENDING_SPEECH_BYTES = BYTES_PER_SECOND * 60
+    }
+
+    private class PendingSpeech(val playbackCandidate: Boolean) {
+        private val output = ByteArrayOutputStream()
+        var ended = false
+        val size: Int get() = output.size()
+        fun append(bytes: ByteArray) {
+            val remaining = MAX_PENDING_SPEECH_BYTES - output.size()
+            if (remaining > 0) output.write(bytes, 0, minOf(remaining, bytes.size))
+        }
+        fun bytes(): ByteArray = output.toByteArray()
     }
 }

@@ -229,5 +229,6 @@ private fun eventTitle(kind: String): String = when (kind) {
     "tool_availability" -> "工具注册"
     "image" -> "照片"
     "playback_interruption" -> "语音播报打断"
+    "voice_diagnostic" -> "语音诊断"
     else -> kind
 }

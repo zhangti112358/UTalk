@@ -10,7 +10,7 @@ fun interface ToolInvoker {
 
 class CatalogToolInvoker(
     private val catalog: ToolCatalog,
-    private val policy: ToolPolicy = ExplicitRideOrderPolicy(),
+    private val policy: ToolPolicy = DefaultToolPolicy(),
 ) : ToolInvoker {
     override suspend fun invoke(
         toolId: String,

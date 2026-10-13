@@ -93,7 +93,7 @@ private fun SettingsScreen() {
         Text(if (didiEnvironment == DiDiEnvironment.SANDBOX) {
             "当前：测试环境。只创建模拟订单，不会真的叫车。"
         } else {
-            "当前：正式环境。明确叫车指令会直接创建真实订单。"
+            "当前：正式环境。起终点确认后会创建真实订单。"
         })
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
@@ -157,7 +157,7 @@ private fun SettingsScreen() {
     if (pendingProduction) AlertDialog(
         onDismissRequest = { pendingProduction = false },
         title = { Text("切换滴滴正式环境？") },
-        text = { Text("正式环境会产生真实叫车订单。当前 Agent 对明确的叫车指令不会再进行二次确认；请确认你希望启用真实下单。") },
+        text = { Text("正式环境会产生真实叫车订单。Agent 会播报起点和终点并只确认一次，之后任意肯定回复都会下单；请确认你希望启用真实下单。") },
         confirmButton = {
             TextButton(onClick = {
                 SettingsRepository.setDiDiEnvironment(DiDiEnvironment.PRODUCTION)

@@ -99,6 +99,18 @@ class SqliteHistoryStore(context: Context, databaseName: String = DATABASE_NAME)
         revision.value++
     }
 
+    /** 追加不参与模型上下文和历史搜索的本机诊断事件。 */
+    @Synchronized
+    fun recordDiagnostic(sessionId: String, turn: Int, kind: String, content: String) {
+        require(kind.isNotBlank())
+        val values = ContentValues().apply {
+            put("session_id", sessionId); put("turn_no", turn); put("occurred_at", System.currentTimeMillis())
+            put("kind", kind); put("content", content)
+        }
+        check(writableDatabase.insertOrThrow("events", null, values) > 0)
+        revision.value++
+    }
+
     @Synchronized
     override fun append(sessionId: String, turn: Int, occurredAtMillis: Long, item: AgentContextItem) {
         val values = ContentValues().apply {

@@ -6,5 +6,6 @@ interface AgentConversation : AutoCloseable {
     fun send(text: String, listener: AgentEventListener): AgentCancellation
     fun cancel()
     fun recordPlaybackInterruption(spokenPrefix: String, fullResponse: String)
+    /** 语音协议诊断仅进入本机 Debug 历史，不进入模型上下文。 */
+    fun recordVoiceDiagnostic(content: String) {}
 }
-

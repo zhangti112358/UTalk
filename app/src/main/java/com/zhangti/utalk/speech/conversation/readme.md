@@ -2,6 +2,8 @@
 
 只负责组合音频输入、VAD、ASR、文字 Agent 和 TTS，各底层模块仍可独立测试和替换。
 
+同一时刻最多保留一个豆包 ASR 会话。静音后会话进入收尾状态，期间的新语音最多缓存 60 秒；旧会话收到完成或错误后才创建下一会话。ASR 服务错误会把 code、payload、Request ID、Log ID 和编排状态写入本机 Debug 历史，不保存原始录音。
+
 ## 文件
 
 - `VoiceConversationController.kt`：持续监听 VAD 状态，携带 500ms 前置音频启动 ASR，将最终文本送入 Agent，再把模型增量交给 TTS；系统 AEC 已启用时在 VAD 起点打断，其他设备用 ASR 确认，并记录估算的已听前缀。

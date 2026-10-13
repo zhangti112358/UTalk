@@ -18,6 +18,33 @@ import org.junit.Test
 
 class VoiceConversationControllerTest {
     @Test
+    fun `a second utterance is buffered until the finishing ASR session completes`() {
+        val audio = FakeAudioSource()
+        val asr = FakeAsr()
+        val controller = VoiceConversationController(
+            agent = FakeAgent(), listener = FakeVoiceListener(), audioSource = audio,
+            vad = FakeVad(), asr = asr, playerFactory = FakePlayerFactory(),
+        )
+
+        controller.start()
+        audio.emit(byteArrayOf(1, 1))
+        audio.emit(byteArrayOf(2, 2))
+        assertEquals(1, asr.sessions.size)
+        assertTrue(asr.sessions[0].finished)
+
+        // 第一条仍在等最终结果时，第二条只进入本地缓冲，不建立并发 WebSocket。
+        audio.emit(byteArrayOf(1, 1))
+        audio.emit(byteArrayOf(2, 2))
+        assertEquals(1, asr.sessions.size)
+
+        asr.complete(0)
+        assertEquals(2, asr.sessions.size)
+        assertTrue(asr.sessions[1].sent.isNotEmpty())
+        assertTrue(asr.sessions[1].finished)
+        controller.close()
+    }
+
+    @Test
     fun `active AEC interrupts at speech onset while ASR and model continue`() {
         val audio = FakeAudioSource(aecActive = true)
         val asr = FakeAsr()
@@ -141,15 +168,16 @@ private class FakeVad : ContinuousVadProcessor {
 }
 
 private class FakeAsr : StreamingAsrClient {
-    lateinit var listener: StreamingAsrClient.Listener
-    lateinit var session: FakeAsrSession
+    val listeners = mutableListOf<StreamingAsrClient.Listener>()
+    val sessions = mutableListOf<FakeAsrSession>()
+    val listener: StreamingAsrClient.Listener get() = listeners.last()
+    val session: FakeAsrSession get() = sessions.last()
     override fun start(listener: StreamingAsrClient.Listener): StreamingAsrClient.Session {
-        this.listener = listener
-        session = FakeAsrSession()
-        return session
+        listeners += listener
+        return FakeAsrSession().also { sessions += it }
     }
     fun emitResult(text: String, isFinal: Boolean) = listener.onResult(text, isFinal)
-    fun complete() = listener.onCompleted()
+    fun complete(index: Int = listeners.lastIndex) = listeners[index].onCompleted()
 }
 
 private class FakeAsrSession : StreamingAsrClient.Session {

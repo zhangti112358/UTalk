@@ -55,6 +55,13 @@ class DoubaoAsr(
     private val apiKey: String = AppConfig.instance.doubaoApiKey,
 ) {
 
+    class ServiceException(
+        val code: Int,
+        val payload: String?,
+        val requestId: String,
+        val logId: String?,
+    ) : RuntimeException("ASR error $code: ${payload ?: "无服务端详情"}")
+
     /** 识别结果回调（回调线程为 OkHttp WS 线程，UI 更新请自行切主线程）。 */
     interface Listener {
         /**
@@ -84,6 +91,12 @@ class DoubaoAsr(
         /** 是否已被主动取消（取消后不再回调上层，避免关闭后仍报错）。 */
         @Volatile
         internal var cancelled = false
+
+        @Volatile
+        internal var terminal = false
+
+        internal lateinit var requestId: String
+        @Volatile internal var logId: String? = null
 
         /**
          * 是否已就绪（full request 已在 onOpen 发出）。
@@ -184,11 +197,13 @@ class DoubaoAsr(
     fun startStream(listener: Listener): Session {
         val client = sharedClient
 
+        val requestId = UUID.randomUUID().toString()
+
         val request = Request.Builder()
             .url(ASR_URL)
             .header("X-Api-Key", apiKey)
             .header("X-Api-Resource-Id", RESOURCE_ID)
-            .header("X-Api-Request-Id", UUID.randomUUID().toString())
+            .header("X-Api-Request-Id", requestId)
             .build()
 
         lateinit var session: Session
@@ -198,7 +213,8 @@ class DoubaoAsr(
                     runCatching { webSocket.cancel() }
                     return
                 }
-                Log.i(TAG, "ws connected, X-Tt-Logid=${response.header("X-Tt-Logid")}")
+                session.logId = response.header("X-Tt-Logid")
+                Log.i(TAG, "ws connected, X-Tt-Logid=${session.logId}")
                 webSocket.send(buildFullRequest(1).toByteString())
                 session.markReady()
             }
@@ -207,8 +223,10 @@ class DoubaoAsr(
                 if (session.cancelled) return
                 val r = parseResponse(bytes.toByteArray())
                 if (r.code != 0) {
+                    session.terminal = true
                     Log.e(TAG, "server error code=${r.code} payload=${r.rawPayload}")
-                    listener.onError(RuntimeException("ASR error ${r.code}: ${r.rawPayload}"))
+                    listener.onError(ServiceException(r.code, r.rawPayload, session.requestId, session.logId))
+                    webSocket.close(1000, "server error")
                     return
                 }
                 if (r.text != null) {
@@ -216,20 +234,21 @@ class DoubaoAsr(
                     listener.onResult(r.text!!, r.isLast)
                 }
                 if (r.isLast) {
+                    session.terminal = true
                     listener.onCompleted()
                     webSocket.close(1000, "done")
                 }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                if (session.cancelled) return
+                if (session.cancelled || session.terminal) return
                 Log.e(TAG, "ws failure", t)
                 listener.onError(t)
                 session.release()
             }
         })
 
-        session = Session(ws, client)
+        session = Session(ws, client).also { it.requestId = requestId }
         return session
     }
 

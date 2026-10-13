@@ -18,6 +18,7 @@ https://github.com/volcengine/sauc-python-demo
 
 - `DoubaoAsr.kt`：实现豆包双向 WebSocket 协议，接收连续 PCM 并回调增量和最终识别文本。
 - `StreamingAsrClient.kt`：定义语音编排依赖的厂商无关流式识别接口，并提供豆包适配器。
+- `AsrAudioPacketizer.kt`：实时 PCM 聚合成约 100ms 一包；短于 1 秒的已缓存前置音频一次发送，更长缓存按 100ms 拆分。
 - `AsrConstants.kt`：保存 ASR 地址、采样参数和二进制帧协议常量。
 - `AsrTestActivity.kt`：提供手动开始/停止的麦克风 ASR 独立测试页面。
 
