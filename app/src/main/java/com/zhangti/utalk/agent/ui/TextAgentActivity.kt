@@ -1,6 +1,7 @@
 package com.zhangti.utalk.agent.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -10,7 +11,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,21 +22,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -45,14 +51,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import com.zhangti.utalk.agent.debug.DebugScreen
-import com.zhangti.utalk.agent.history.SqliteHistoryStore
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.zhangti.utalk.agent.runtime.AgentEvent
 import com.zhangti.utalk.agent.runtime.AgentEventListener
 import com.zhangti.utalk.agent.runtime.TextAgentSession
+import com.zhangti.utalk.settings.SettingsActivity
 import com.zhangti.utalk.speech.conversation.VoiceConversationController
 import com.zhangti.utalk.speech.conversation.VoiceConversationState
 import com.zhangti.utalk.speech.playback.PlaybackProgress
@@ -94,7 +105,6 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
     val androidContext = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    val debugRepository = remember { SqliteHistoryStore.get(androidContext.applicationContext) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val sessionRef = remember { AtomicReference<TextAgentSession?>() }
     val voiceRef = remember { AtomicReference<VoiceConversationController?>() }
@@ -107,8 +117,6 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
     var voiceEnabled by remember { mutableStateOf(false) }
     var streamingText by remember { mutableStateOf("") }
     var nextId by remember { mutableStateOf(1L) }
-    var debugVisible by remember { mutableStateOf(false) }
-    var currentSessionId by remember { mutableStateOf<String?>(null) }
 
     fun addLine(role: LineRole, text: String) {
         lines = lines + ChatLine(nextId++, role, text)
@@ -223,7 +231,6 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
             ) { progress -> mainHandler.post { status = progress } }
         }
         sessionRef.set(created.first)
-        currentSessionId = created.first.sessionId
         ready = true
         status = if (created.second.errors.isEmpty()) {
             "已加载 ${created.second.loadedTools} 个工具"
@@ -288,39 +295,25 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
         session.send(text, AgentEventListener { event -> mainHandler.post { handleAgentEvent(event) } })
     }
 
-    // Debug 是覆盖层，整个 AgentScreen 仍在组合树中，控制器不会因切页被关闭。
-    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .safeDrawingPadding()
-            .then(if (debugVisible) Modifier.clearAndSetSemantics { } else Modifier),
+            .safeDrawingPadding(),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("UTalk Agent", style = MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = {
+                Text("UTalk", style = MaterialTheme.typography.titleLarge, maxLines = 1, modifier = Modifier.weight(1f))
+                TextButton(onClick = {
                     focusManager.clearFocus()
                     keyboard?.hide()
-                    debugVisible = true
-                }, enabled = ready) { Text("Debug") }
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton(
-                    onClick = { toggleVoice() },
-                    enabled = ready && (!running || voiceEnabled),
-                ) {
-                    Text(if (voiceEnabled) "关闭语音" else "开启语音")
-                }
+                    androidContext.startActivity(Intent(androidContext, SettingsActivity::class.java))
+                }) { Text("设置") }
             }
-            Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             PhotoCapturePanel(photoCapture)
-            if (voicePartial.isNotBlank()) {
-                Text("识别中：$voicePartial", style = MaterialTheme.typography.bodyMedium)
-            }
         }
         LazyColumn(
             state = listState,
@@ -330,38 +323,159 @@ private fun AgentScreen(locationPermissionGate: ActivityLocationPermissionGate, 
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (lines.isEmpty() && streamingText.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "有什么可以帮你？",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             items(lines, key = { it.id }) { ChatLineBubble(it) }
             if (streamingText.isNotEmpty()) {
                 item { ChatLineBubble(ChatLine(-1, LineRole.ASSISTANT, "$streamingText▍")) }
             }
         }
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it },
-                enabled = ready && !running && !voiceEnabled,
-                placeholder = {
-                    Text(if (voiceEnabled) "语音模式正在持续聆听" else "问路线、航班、酒店、天气或打车…")
-                },
-                modifier = Modifier.weight(1f),
-                maxLines = 4,
-            )
-            Spacer(Modifier.width(12.dp))
-            Button(
-                onClick = { sendText() },
-                enabled = ready && !voiceEnabled && (running || input.isNotBlank()),
+            val inputStatus = voicePartial.takeIf(String::isNotBlank)?.let { "识别中：$it" }
+                ?: status.takeUnless { it == "就绪" || it.startsWith("已加载 ") }
+            if (!inputStatus.isNullOrBlank()) {
+                Text(
+                    inputStatus,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(if (running) "停止" else "发送")
+                MicrophoneToggle(
+                    active = voiceEnabled,
+                    enabled = ready && (!running || voiceEnabled),
+                    onClick = { toggleVoice() },
+                )
+                Spacer(Modifier.width(10.dp))
+                CompactChatInput(
+                    value = input,
+                    onValueChange = { input = it },
+                    enabled = ready && !running && !voiceEnabled,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(10.dp))
+                SendButton(
+                    running = running,
+                    enabled = ready && !voiceEnabled && (running || input.isNotBlank()),
+                    onClick = { sendText() },
+                )
             }
         }
     }
-    if (debugVisible) DebugScreen(debugRepository, currentSessionId, status, onClose = { debugVisible = false })
+}
+
+/** 单行时保持紧凑，多行时按内容增高；避免强压 Material 输入框导致文字裁切和空滚动。 */
+@Composable
+private fun CompactChatInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    val textColor = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
+    val borderColor = if (enabled) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = .38f)
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        minLines = 1,
+        maxLines = 4,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        modifier = modifier
+            .heightIn(min = 48.dp, max = 112.dp)
+            .border(1.dp, borderColor, shape)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    )
+}
+
+/** 紧凑的发送按钮：向上箭头表示发送，生成时切换成停止方块。 */
+@Composable
+private fun SendButton(running: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val background = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val iconColor = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .size(48.dp)
+            .background(background, CircleShape)
+            .semantics { contentDescription = if (running) "停止生成" else "发送" },
+    ) {
+        Canvas(Modifier.size(21.dp)) {
+            if (running) {
+                drawRoundRect(
+                    color = iconColor,
+                    topLeft = Offset(size.width * .28f, size.height * .28f),
+                    size = Size(size.width * .44f, size.height * .44f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()),
+                )
+            } else {
+                val stroke = 2.2.dp.toPx()
+                drawLine(iconColor, Offset(size.width * .5f, size.height * .80f), Offset(size.width * .5f, size.height * .22f), stroke, StrokeCap.Round)
+                drawLine(iconColor, Offset(size.width * .5f, size.height * .22f), Offset(size.width * .22f, size.height * .50f), stroke, StrokeCap.Round)
+                drawLine(iconColor, Offset(size.width * .5f, size.height * .22f), Offset(size.width * .78f, size.height * .50f), stroke, StrokeCap.Round)
+            }
+        }
+    }
+}
+
+/** 持续语音开关：只保留话筒轮廓、支架和底座三笔，避免复杂图形。 */
+@Composable
+private fun MicrophoneToggle(active: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val iconColor = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val background = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .size(48.dp)
+            .background(background, CircleShape)
+            .semantics { contentDescription = if (active) "关闭语音" else "开启语音" },
+    ) {
+        Canvas(Modifier.size(22.dp)) {
+            val stroke = 2.dp.toPx()
+            drawRoundRect(
+                color = iconColor,
+                topLeft = Offset(size.width * .34f, size.height * .08f),
+                size = Size(size.width * .32f, size.height * .50f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * .16f),
+                style = Stroke(stroke),
+            )
+            drawArc(
+                color = iconColor,
+                startAngle = 0f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(size.width * .20f, size.height * .24f),
+                size = Size(size.width * .60f, size.height * .50f),
+                style = Stroke(stroke, cap = StrokeCap.Round),
+            )
+            drawLine(iconColor, Offset(size.width * .5f, size.height * .74f), Offset(size.width * .5f, size.height * .91f), stroke, StrokeCap.Round)
+            drawLine(iconColor, Offset(size.width * .35f, size.height * .91f), Offset(size.width * .65f, size.height * .91f), stroke, StrokeCap.Round)
+        }
     }
 }
 

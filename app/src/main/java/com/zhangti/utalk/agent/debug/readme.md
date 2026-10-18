@@ -2,7 +2,8 @@
 
 - `DebugRepository.kt`：提供按会话、轮次读取完整事件，以及按模型调用读取请求快照的只读接口。
 - `RequestSnapshotCodec.kt`：序列化模型实际输入与裁剪记录；图片用私有文件引用表示，不记录 Base64 或 API 鉴权信息。
-- `DebugScreen.kt`：同一 Activity 内的全屏调试页面，以轮次、消息类型和原文详情的嵌套卡片展示历史；工具调用与返回按原始顺序分别列出，并可查看模型请求。
+- `DebugActivity.kt`：设置页开发者工具区域中的 Debug 入口，读取本机已有会话而不依赖正在运行的 Agent 页面。
+- `DebugScreen.kt`：以轮次、消息类型和原文详情的嵌套卡片展示历史；工具调用与返回按原始顺序分别列出，并可查看模型请求。
 - `DebugDetailComponents.kt`：提供大触控区域的展开/收起卡片、按需 JSON 格式化、完整原文复制、分段加载长文本及历史图片预览。
 - `DebugToolPairing.kt`：根据模型输出顺序、调用 ID 和工具名称配对结果，避免多次调用复用 ID 时显示错误结果。
 

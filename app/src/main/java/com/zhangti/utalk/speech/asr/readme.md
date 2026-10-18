@@ -12,7 +12,7 @@ https://github.com/volcengine/sauc-python-demo
 # 实现内容
 
 1. ✅ DoubaoAsr 类：WebSocket 二进制协议（OkHttp 直连）
-2. ✅ AsrTestActivity：麦克风实时流式识别测试页（MainActivity「测试 ASR」进入）
+2. ✅ AsrTestActivity：麦克风实时流式识别测试页（设置页「开发者工具」进入）
 
 ## 文件
 

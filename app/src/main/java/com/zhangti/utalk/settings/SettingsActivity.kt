@@ -1,5 +1,6 @@
 package com.zhangti.utalk.settings
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -29,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -36,6 +38,10 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.zhangti.utalk.LocalConfig
+import com.zhangti.utalk.agent.debug.DebugActivity
+import com.zhangti.utalk.agent.llm.LlmChatActivity
+import com.zhangti.utalk.speech.asr.AsrTestActivity
+import com.zhangti.utalk.speech.tts.TtsTestActivity
 
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +58,7 @@ class SettingsActivity : ComponentActivity() {
 
 @Composable
 private fun SettingsScreen() {
+    val context = LocalContext.current
     var keys by remember {
         mutableStateOf(SettingsCatalog.apiKeys.associate { it.key to SettingsRepository.savedKey(it.key).orEmpty() })
     }
@@ -151,6 +158,30 @@ private fun SettingsScreen() {
                 }
             }.getOrElse { "解析失败：请检查是否为 key=value 格式" }
         }) { Text("提取并填入") }
+
+        Spacer(Modifier.height(8.dp))
+        Text("开发者工具", style = MaterialTheme.typography.titleMedium)
+        Text("查看 Agent 完整记录，或单独测试模型与语音模块。")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(context, DebugActivity::class.java)) },
+                modifier = Modifier.weight(1f),
+            ) { Text("Agent Debug") }
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(context, LlmChatActivity::class.java)) },
+                modifier = Modifier.weight(1f),
+            ) { Text("LLM 测试") }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(context, AsrTestActivity::class.java)) },
+                modifier = Modifier.weight(1f),
+            ) { Text("ASR 测试") }
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(context, TtsTestActivity::class.java)) },
+                modifier = Modifier.weight(1f),
+            ) { Text("TTS 测试") }
+        }
         if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.primary)
     }
 

@@ -41,9 +41,15 @@ import org.json.JSONObject
 private fun sessionTime(millis: Long): String = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
 
-/** Activity 内的独立全屏调试视图；Agent 所在组合树持续存在。 */
+/** 完整的本机 Agent 调试记录视图。 */
 @Composable
-fun DebugScreen(repository: DebugRepository, currentSessionId: String?, agentStatus: String, onClose: () -> Unit) {
+fun DebugScreen(
+    repository: DebugRepository,
+    currentSessionId: String?,
+    agentStatus: String,
+    closeLabel: String = "返回",
+    onClose: () -> Unit,
+) {
     BackHandler(onBack = onClose)
     val revision by repository.changes.collectAsState()
     var selected by remember { mutableStateOf(currentSessionId) }
@@ -76,7 +82,7 @@ fun DebugScreen(repository: DebugRepository, currentSessionId: String?, agentSta
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = onClose) { Text("返回对话") }
+                TextButton(onClick = onClose) { Text(closeLabel) }
                 Text("Debug", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleLarge)
             }
             Text("Agent：$agentStatus", style = MaterialTheme.typography.bodySmall)

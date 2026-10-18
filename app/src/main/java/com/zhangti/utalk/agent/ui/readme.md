@@ -8,5 +8,5 @@
 
 ## 文件
 
-- `TextAgentActivity.kt`：初始化同一个 Agent 会话，提供文字、持续语音和 Debug 全屏入口；查看 Debug 时保留聊天组合树与控制器。
+- `TextAgentActivity.kt`：应用启动入口并初始化 Agent 会话；顶部进入设置，底部并列提供极简语音开关、单行紧凑且随换行增高的输入框和上箭头发送按钮，工具调用事件继续显示在对话区。
 - `ActivityLocationPermissionGate.kt`：当 Agent 首次调用手机定位工具时显示 Android 定位授权弹窗，并把授权结果返回给工具线程。

@@ -8,7 +8,7 @@ https://docs.volcengine.com/docs/6561/2532486?lang=zh
 # 实现内容
 
 1. ✅ DoubaoTTS 类：双向流式 WebSocket 协议（OkHttp 直连），输入文本 → 流式返回 PCM 音频
-2. ✅ TtsTestActivity：文本合成播放测试页（MainActivity「测试 TTS」进入，播放中再点 = 打断重播）
+2. ✅ TtsTestActivity：文本合成播放测试页（设置页「开发者工具」进入，播放中再点 = 打断重播）
 
 ## 文件
 

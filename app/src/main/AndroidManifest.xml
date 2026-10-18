@@ -25,16 +25,6 @@
         android:theme="@style/Theme.UTalk">
 
         <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:theme="@style/Theme.UTalk">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <activity
             android:name=".speech.asr.AsrTestActivity"
             android:exported="false"
             android:theme="@style/Theme.UTalk" />
@@ -52,8 +42,18 @@
 
         <activity
             android:name=".agent.ui.TextAgentActivity"
-            android:exported="false"
+            android:exported="true"
             android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.UTalk">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".agent.debug.DebugActivity"
+            android:exported="false"
             android:theme="@style/Theme.UTalk" />
 
         <activity
