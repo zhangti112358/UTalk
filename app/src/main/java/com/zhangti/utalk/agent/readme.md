@@ -25,7 +25,7 @@
 
 ## 工具暴露策略
 
-高德常用地图工具、`device_current_location`、`device_current_time` 和 `search_tools` 始终提供给模型。航班、酒店、天气、打车及低频地图工具保存在目录中；模型调用 `search_tools` 后，命中的完整定义会作为 `ToolAvailabilityContext` 加入会话，从下一次模型调用开始可用。
+高德常用地图工具、`device_current_location`、`device_current_time`、`web_search`、`web_fetch` 和 `search_tools` 始终提供给模型。航班、酒店、天气、打车及低频地图工具保存在目录中；模型调用 `search_tools` 后，命中的完整定义会作为 `ToolAvailabilityContext` 加入会话，从下一次模型调用开始可用。
 
 远程工具对模型使用稳定命名空间，例如：
 

@@ -23,6 +23,9 @@ import com.zhangti.utalk.agent.tool.local.TakePhotoTool
 import com.zhangti.utalk.agent.tool.mcp.McpServerConfig
 import com.zhangti.utalk.agent.tool.mcp.McpToolProvider
 import com.zhangti.utalk.agent.tool.model.NamespacedAgentTool
+import com.zhangti.utalk.agent.tool.web.DeepSeekWebApi
+import com.zhangti.utalk.agent.tool.web.DeepSeekWebFetchTool
+import com.zhangti.utalk.agent.tool.web.DeepSeekWebSearchTool
 import java.io.Closeable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -139,6 +142,28 @@ class TravelToolEnvironment private constructor(
                 ),
                 tool = photoTool,
             ))
+
+            val webApi = DeepSeekWebApi(
+                apiKey = AppConfig.instance.deepseekApiKey,
+                baseUrl = AppConfig.instance.deepseekBaseUrl,
+            )
+            val webTools = listOf(
+                DeepSeekWebSearchTool(webApi) to setOf("网页搜索", "网络搜索", "实时信息", "新闻", "互联网"),
+                DeepSeekWebFetchTool(webApi) to setOf("网页抓取", "读取网页", "Markdown", "网址"),
+            )
+            webTools.forEach { (tool, keywords) ->
+                catalog.register(CatalogTool(
+                    metadata = ToolMetadata(
+                        id = tool.definition.name,
+                        provider = "DeepSeek",
+                        domain = ToolDomain.SYSTEM,
+                        summary = tool.definition.description.orEmpty(),
+                        keywords = keywords,
+                        core = true,
+                    ),
+                    tool = tool,
+                ))
+            }
 
             val searchTool = SearchToolsTool(catalog, context)
             catalog.register(
