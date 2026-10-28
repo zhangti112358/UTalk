@@ -16,7 +16,7 @@
 - [`tool/model/`](tool/model/readme.md)：MCP 工具到模型工具的适配和远程工具命名空间。
 - [`tool/mcp/`](tool/mcp/readme.md)：远程 MCP 连接、调用和限流。
 - [`tool/local/`](tool/local/readme.md)：按需获取手机当前 GPS/网络位置与本地时间的工具。
-- [`bootstrap/`](bootstrap/readme.md)：地图、航班、酒店、打车、天气 MCP 的独立加载与分类。
+- [`bootstrap/`](bootstrap/readme.md)：地图、12306 火车票、航班、酒店、打车、天气 MCP 的独立加载与分类。
 - [`ui/`](ui/readme.md)：文字 Agent 页面，只消费结构化 `AgentEvent`。
 - [`../speech/audio/`](../speech/audio/readme.md)：持续麦克风采集与前置 PCM 缓冲。
 - [`../speech/vad/`](../speech/vad/readme.md)：本地 Silero VAD 和连续说话状态。
@@ -25,7 +25,7 @@
 
 ## 工具暴露策略
 
-高德常用地图工具、`device_current_location`、`device_current_time`、`web_search`、`web_fetch` 和 `search_tools` 始终提供给模型。航班、酒店、天气、打车及低频地图工具保存在目录中；模型调用 `search_tools` 后，命中的完整定义会作为 `ToolAvailabilityContext` 加入会话，从下一次模型调用开始可用。
+高德常用地图工具、`device_current_location`、`device_current_time`、`web_search`、`web_fetch` 和 `search_tools` 始终提供给模型。12306 火车票、航班、酒店、天气、打车及低频地图工具保存在目录中；模型调用 `search_tools` 后，命中的完整定义会作为 `ToolAvailabilityContext` 加入会话，从下一次模型调用开始可用。
 
 远程工具对模型使用稳定命名空间，例如：
 
@@ -35,6 +35,7 @@ flight__searchFlightsByDepArr
 hotel__searchHotels
 ride__taxi_estimate
 weather__get_hourly_forecast
+rail__get-tickets
 ```
 
 地点搜索与路线规划统一使用高德。滴滴的地图工具及生成打车链接的工具不进入 Agent 目录，只保留非链接网约车接口。成功预估且起终点明确后，Agent 播报起终点并只询问一次；用户下一轮任意肯定回复可创建一次订单。普通询价不会进入确认，参数不匹配及重复发单仍被策略拒绝，取消订单仍不可执行。

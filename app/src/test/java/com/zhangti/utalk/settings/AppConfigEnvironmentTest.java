@@ -16,7 +16,7 @@ public class AppConfigEnvironmentTest {
     }
 
     private AppConfig config(DiDiEnvironment mode) {
-        return new AppConfig("model", "voice", "map", "flight", "weather", "hotel", "ride", mode);
+        return new AppConfig("model", "voice", "map", "flight", "weather", "hotel", "ride", "rail", mode);
     }
 
     private String url(AppConfig config, String name) {

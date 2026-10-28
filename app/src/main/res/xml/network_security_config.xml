@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <!-- 自建 12306 MCP 当前只提供 HTTP；仅为该主机开放明文流量。 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">49.233.133.165</domain>
+    </domain-config>
+</network-security-config>

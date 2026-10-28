@@ -5,6 +5,7 @@ import com.zhangti.utalk.agent.tool.AgentTool
 enum class ToolDomain(val aliases: Set<String>) {
     MAP(setOf("地图", "地点", "路线", "导航", "map", "route", "location")),
     FLIGHT(setOf("机票", "航班", "飞机", "flight", "airport")),
+    RAIL(setOf("火车票", "铁路", "火车", "高铁", "动车", "12306", "train", "railway")),
     HOTEL(setOf("酒店", "住宿", "hotel")),
     RIDE(setOf("打车", "出租车", "网约车", "滴滴", "taxi", "ride")),
     WEATHER(setOf("天气", "气温", "降雨", "预警", "weather")),
@@ -75,10 +76,14 @@ class ToolCatalog {
                         else -> 0
                     }
                 } + (if (domain == meta.domain) 5 else 0) +
-                    if (meta.domain == ToolDomain.RIDE &&
+                    (if (meta.domain == ToolDomain.RIDE &&
                         meta.id.startsWith("ride__taxi_") &&
                         RIDE_QUERY_TERMS.any(normalized::contains)
-                    ) 12 else 0
+                    ) 12 else 0) +
+                    (if (meta.domain == ToolDomain.RAIL &&
+                        meta.id.substringAfter("__") in RAIL_TICKET_TOOLS &&
+                        RAIL_TICKET_TERMS.any(normalized::contains)
+                    ) 12 else 0)
                 entry to score
             }
             .filter { (_, score) -> score > 0 || domain != null }
@@ -92,5 +97,9 @@ class ToolCatalog {
         private val RIDE_QUERY_TERMS = listOf(
             "打车", "叫车", "下单", "快车", "专车", "滴滴", "出租车", "网约车", "taxi", "ride",
         )
+        private val RAIL_TICKET_TERMS = listOf(
+            "火车票", "车票", "余票", "12306", "高铁票", "动车票", "train ticket",
+        )
+        private val RAIL_TICKET_TOOLS = setOf("get-tickets", "get-interline-tickets")
     }
 }

@@ -11,6 +11,7 @@ object SettingsCatalog {
         ApiKeyField(KeyNames.DEEPSEEK, "DeepSeek 模型"),
         ApiKeyField(KeyNames.DOUBAO, "豆包语音 ASR / TTS"),
         ApiKeyField(KeyNames.AMAP, "高德地图"),
+        ApiKeyField(KeyNames.RAIL12306, "12306 火车票 MCP"),
         ApiKeyField(KeyNames.DIDI, "滴滴出行"),
         ApiKeyField(KeyNames.VARIFLIGHT, "飞友航班"),
         ApiKeyField(KeyNames.CAIYUN_WEATHER, "彩云天气"),

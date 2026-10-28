@@ -23,7 +23,10 @@ class McpToolListDumpTest {
 
         val json = Json { prettyPrint = true }
 
-        AppConfig.instance.remoteMcpServers.forEach { server ->
+        val selectedServer = System.getenv("UTALK_MCP_SERVER")?.takeIf(String::isNotBlank)
+        AppConfig.instance.remoteMcpServers
+            .filter { selectedServer == null || it.name == selectedServer }
+            .forEach { server ->
             val provider = McpToolProvider(server)
             try {
                 val tools = provider.loadTools()
@@ -64,7 +67,7 @@ class McpToolListDumpTest {
 
     /** 打码 URL 中的 key 类查询参数，避免把密钥写进文档。 */
     private fun maskUrl(url: String): String =
-        url.replace(Regex("([?&](?:key|api_key|api-key|apikey)=)[^&]*")) {
+        url.replace(Regex("([?&](?:key|api_key|api-key|apikey|token)=)[^&]*")) {
             it.groupValues[1] + "***"
         }
 }

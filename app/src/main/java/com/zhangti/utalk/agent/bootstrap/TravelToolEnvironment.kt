@@ -203,6 +203,7 @@ class TravelToolEnvironment private constructor(
             "DIDA-Hotel" -> SourceSpec(config, "hotel", "DIDA 酒店", ToolDomain.HOTEL)
             "DiDi-Ride" -> SourceSpec(config, "ride", "滴滴出行", ToolDomain.RIDE)
             "Caiyun-Weather" -> SourceSpec(config, "weather", "彩云天气", ToolDomain.WEATHER)
+            "China-Railway-12306" -> SourceSpec(config, "rail", "12306 火车票", ToolDomain.RAIL)
             else -> null
         }
 
@@ -213,7 +214,17 @@ class TravelToolEnvironment private constructor(
         }
 
         private fun keywordsFor(domain: ToolDomain, name: String): Set<String> =
-            domain.aliases + name.replace('_', ' ').split(' ')
+            domain.aliases + name.replace('_', ' ').replace('-', ' ').split(' ') + when {
+                domain == ToolDomain.RAIL && name == "get-tickets" ->
+                    setOf("直达车票", "余票查询", "车次查询", "买火车票")
+                domain == ToolDomain.RAIL && name == "get-interline-tickets" ->
+                    setOf("中转车票", "换乘", "中转余票")
+                domain == ToolDomain.RAIL && name == "get-train-route-stations" ->
+                    setOf("经停站", "途经站", "列车路线", "车次经停")
+                domain == ToolDomain.RAIL && name.contains("station") ->
+                    setOf("火车站", "车站代码", "车站信息")
+                else -> emptySet()
+            }
 
         private val CORE_MAP_TOOLS = setOf(
             "maps_geo",

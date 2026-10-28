@@ -29,6 +29,9 @@ object KeyNames {
 
     /** 滴滴出行 MCP Key */
     const val DIDI = "didi"
+
+    /** 自建 12306 MCP Token */
+    const val RAIL12306 = "rail12306"
 }
 
 /**
@@ -49,6 +52,7 @@ data class AppConfig(
     val caiyunWeatherMcpKey: String,
     val didaMcpKey: String,
     val didiMcpKey: String,
+    val rail12306McpToken: String,
     val didiEnvironment: DiDiEnvironment = DiDiEnvironment.SANDBOX,
 ) {
     // ── 非敏感配置，硬编码 ──
@@ -113,6 +117,13 @@ data class AppConfig(
                 "Accept" to "application/json, text/event-stream",
             ),
         ),
+        // 自建 12306 火车票 MCP：Token 只从手机设置或 secrets.properties 注入。
+        McpServerConfig(
+            name = "China-Railway-12306",
+            url = "http://49.233.133.165/mcp/12306?token=$rail12306McpToken",
+            qps = 1,
+            headers = mapOf("Accept" to "application/json, text/event-stream"),
+        ),
     )
 
     companion object {
@@ -128,6 +139,7 @@ data class AppConfig(
             caiyunWeatherMcpKey = SettingsRepository.resolvedKey(KeyNames.CAIYUN_WEATHER),
             didaMcpKey = SettingsRepository.resolvedKey(KeyNames.DIDA),
             didiMcpKey = SettingsRepository.resolvedKey(KeyNames.DIDI),
+            rail12306McpToken = SettingsRepository.resolvedKey(KeyNames.RAIL12306),
             didiEnvironment = SettingsRepository.didiEnvironment(),
         )
     }

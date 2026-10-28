@@ -10,6 +10,7 @@ import com.zhangti.utalk.agent.tool.catalog.ToolMetadata
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SearchToolsToolTest {
@@ -37,6 +38,38 @@ class SearchToolsToolTest {
         assertFalse(result.isError == true)
         val active = context.snapshot().items.filterIsInstance<ToolAvailabilityContext>()
         assertEquals(listOf("weather__echo"), active.map { it.toolId })
+    }
+
+    @Test
+    fun `train ticket and 12306 queries prioritize ticket tools`() = runBlocking {
+        for (query in listOf("查询北京到上海的火车票", "12306")) {
+            val context = InMemoryAgentContextStore()
+            val catalog = ToolCatalog().apply {
+                listOf(
+                    "get-current-date", "get-stations-code-in-city", "get-station-code-of-citys",
+                    "get-station-code-by-names", "get-station-by-telecode", "get-tickets",
+                    "get-interline-tickets", "get-train-route-stations",
+                ).forEach { name ->
+                    val id = "rail__$name"
+                    register(CatalogTool(
+                        ToolMetadata(
+                            id = id,
+                            provider = "12306 火车票",
+                            domain = ToolDomain.RAIL,
+                            summary = if (name == "get-tickets") "查询12306余票信息" else name,
+                            keywords = ToolDomain.RAIL.aliases,
+                        ),
+                        RenamedEchoTool(id),
+                    ))
+                }
+            }
+
+            val result = SearchToolsTool(catalog, context).call(mapOf("query" to query))
+            assertFalse(result.isError == true)
+            val active = context.snapshot().items.filterIsInstance<ToolAvailabilityContext>().map { it.toolId }
+            assertTrue("$query 应召回直达余票工具", "rail__get-tickets" in active)
+            assertTrue("$query 应召回中转余票工具", "rail__get-interline-tickets" in active)
+        }
     }
 }
 

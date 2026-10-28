@@ -21,7 +21,7 @@ class SearchToolsTool(
 ) : AgentTool {
     override val definition = Tool(
         name = ID,
-        description = "搜索并加载当前未直接展示的出行工具。需要查询航班、机票、酒店、天气、打车或地图扩展能力时先调用。搜索结果中的工具会自动在下一轮可用。",
+        description = "搜索并加载当前未直接展示的出行工具。需要查询火车票、12306、航班、机票、酒店、天气、打车或地图扩展能力时先调用。搜索结果中的工具会自动在下一轮可用。",
         inputSchema = ToolSchema(
             properties = JsonObject(
                 mapOf(
@@ -34,7 +34,7 @@ class SearchToolsTool(
                     "domain" to JsonObject(
                         mapOf(
                             "type" to JsonPrimitive("string"),
-                            "description" to JsonPrimitive("可选领域：map、flight、hotel、ride、weather"),
+                            "description" to JsonPrimitive("可选领域：map、rail、flight、hotel、ride、weather"),
                         )
                     ),
                 )
@@ -81,6 +81,7 @@ class SearchToolsTool(
     private fun parseDomain(value: String?): ToolDomain? = when (value?.lowercase()) {
         "map", "地图" -> ToolDomain.MAP
         "flight", "航班", "机票" -> ToolDomain.FLIGHT
+        "rail", "train", "铁路", "火车", "火车票", "高铁", "动车", "12306" -> ToolDomain.RAIL
         "hotel", "酒店" -> ToolDomain.HOTEL
         "ride", "taxi", "打车" -> ToolDomain.RIDE
         "weather", "天气" -> ToolDomain.WEATHER
