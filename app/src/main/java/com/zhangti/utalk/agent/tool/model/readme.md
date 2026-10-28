@@ -4,6 +4,6 @@
 
 ## 文件
 
-- `NamespacedAgentTool.kt`：为远程工具增加稳定命名空间，避免高德、滴滴等服务出现同名冲突，同时仍委托原工具执行。
+- `NamespacedAgentTool.kt`：为远程工具增加稳定命名空间，避免服务同名冲突；可附加应用侧能力边界说明，同时仍委托原工具执行。
 - `ToolDefinitionAdapter.kt`：把 MCP `ToolSchema` 转换为 `LlmTool` 使用的 JSON Schema，并省略 DeepSeek 不接受的空字段。
 

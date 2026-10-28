@@ -74,7 +74,11 @@ class TravelToolEnvironment private constructor(
                         TravelToolExposurePolicy.isVisible(spec.config.name, remote.definition.name)
                     }
                     exposedTools.forEach { remote ->
-                        val tool = NamespacedAgentTool(spec.namespace, remote)
+                        val tool = NamespacedAgentTool(
+                            namespace = spec.namespace,
+                            delegate = remote,
+                            descriptionSuffix = if (spec.domain == ToolDomain.RAIL) RAIL_READ_ONLY_NOTICE else null,
+                        )
                         val originalName = remote.definition.name
                         val core = spec.domain == ToolDomain.MAP && originalName in CORE_MAP_TOOLS
                         catalog.register(
@@ -216,7 +220,7 @@ class TravelToolEnvironment private constructor(
         private fun keywordsFor(domain: ToolDomain, name: String): Set<String> =
             domain.aliases + name.replace('_', ' ').replace('-', ' ').split(' ') + when {
                 domain == ToolDomain.RAIL && name == "get-tickets" ->
-                    setOf("直达车票", "余票查询", "车次查询", "买火车票")
+                    setOf("直达车票", "余票查询", "车次查询", "查询火车票")
                 domain == ToolDomain.RAIL && name == "get-interline-tickets" ->
                     setOf("中转车票", "换乘", "中转余票")
                 domain == ToolDomain.RAIL && name == "get-train-route-stations" ->
@@ -238,6 +242,9 @@ class TravelToolEnvironment private constructor(
             "maps_direction_bicycling",
             "maps_direction_transit_integrated",
         )
+
+        private const val RAIL_READ_ONLY_NOTICE =
+            "能力边界：本工具只提供只读查询，不能购票、预订、占座或下单；不要向用户承诺或主动询问是否代订火车票。"
     }
 }
 

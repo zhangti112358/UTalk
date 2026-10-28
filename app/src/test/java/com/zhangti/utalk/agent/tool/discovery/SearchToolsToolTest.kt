@@ -66,6 +66,7 @@ class SearchToolsToolTest {
 
             val result = SearchToolsTool(catalog, context).call(mapOf("query" to query))
             assertFalse(result.isError == true)
+            assertTrue(result.content.toString().contains("不能购票、预订、占座或下单"))
             val active = context.snapshot().items.filterIsInstance<ToolAvailabilityContext>().map { it.toolId }
             assertTrue("$query 应召回直达余票工具", "rail__get-tickets" in active)
             assertTrue("$query 应召回中转余票工具", "rail__get-interline-tickets" in active)

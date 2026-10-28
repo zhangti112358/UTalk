@@ -7,9 +7,14 @@ import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 class NamespacedAgentTool(
     namespace: String,
     private val delegate: AgentTool,
+    descriptionSuffix: String? = null,
 ) : AgentTool {
     override val definition = delegate.definition.copy(
         name = "${namespace}__${delegate.definition.name}",
+        description = listOfNotNull(
+            delegate.definition.description?.takeIf(String::isNotBlank),
+            descriptionSuffix?.takeIf(String::isNotBlank),
+        ).joinToString("\n"),
     )
 
     override suspend fun call(arguments: Map<String, Any?>): CallToolResult =

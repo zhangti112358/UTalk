@@ -21,7 +21,7 @@ class SearchToolsTool(
 ) : AgentTool {
     override val definition = Tool(
         name = ID,
-        description = "搜索并加载当前未直接展示的出行工具。需要查询火车票、12306、航班、机票、酒店、天气、打车或地图扩展能力时先调用。搜索结果中的工具会自动在下一轮可用。",
+        description = "搜索并加载当前未直接展示的出行工具。需要查询火车票、12306、航班、机票、酒店、天气、打车或地图扩展能力时先调用。12306 工具只能查询，不能购票、预订或下单。搜索结果中的工具会自动在下一轮可用。",
         inputSchema = ToolSchema(
             properties = JsonObject(
                 mapOf(
@@ -72,6 +72,9 @@ class SearchToolsTool(
                         ToolRisk.BLOCKED -> append("（当前应用暂不执行）")
                     }
                     appendLine()
+                }
+                if (matches.any { it.metadata.domain == ToolDomain.RAIL }) {
+                    append("12306 能力边界：只能查询车站、余票、中转和经停信息，不能购票、预订、占座或下单；不要主动询问用户是否需要代订。")
                 }
             }.trimEnd()
         }
