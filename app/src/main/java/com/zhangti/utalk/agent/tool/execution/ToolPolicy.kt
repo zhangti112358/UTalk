@@ -24,6 +24,7 @@ class DefaultToolPolicy : ToolPolicy {
         turn: ToolTurnContext,
     ): ToolPolicyDecision = when (tool.metadata.risk) {
         ToolRisk.READ_ONLY -> ToolPolicyDecision.Allow
+        ToolRisk.AGENT_DECIDES -> ToolPolicyDecision.Allow
         ToolRisk.BLOCKED -> ToolPolicyDecision.Deny("${tool.metadata.id} 当前不支持执行")
         ToolRisk.EXPLICIT_RIDE_ORDER ->
             if (!turn.reserveRideOrder()) ToolPolicyDecision.Deny(

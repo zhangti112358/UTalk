@@ -12,7 +12,7 @@ enum class ToolDomain(val aliases: Set<String>) {
     SYSTEM(setOf("系统", "工具", "tool")),
 }
 
-enum class ToolRisk { READ_ONLY, EXPLICIT_RIDE_ORDER, BLOCKED }
+enum class ToolRisk { READ_ONLY, AGENT_DECIDES, EXPLICIT_RIDE_ORDER, BLOCKED }
 
 data class ToolMetadata(
     val id: String,

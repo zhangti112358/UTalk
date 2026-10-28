@@ -68,6 +68,7 @@ class SearchToolsTool(
                     append("- ${it.metadata.id}: ${it.metadata.summary}")
                     when (it.metadata.risk) {
                         ToolRisk.READ_ONLY -> Unit
+                        ToolRisk.AGENT_DECIDES -> append("（执行时机由 Agent 按系统提示词判断）")
                         ToolRisk.EXPLICIT_RIDE_ORDER -> append("（下单时机由 Agent 按系统提示词判断）")
                         ToolRisk.BLOCKED -> append("（当前应用暂不执行）")
                     }

@@ -38,6 +38,32 @@ class DefaultToolPolicyTest {
         assertEquals(1, fixture.orderCalls())
     }
 
+    @Test fun `ride cancellation meaning is left entirely to the agent`() = runBlocking {
+        var calls = 0
+        val catalog = ToolCatalog().apply {
+            register(CatalogTool(
+                ToolMetadata(CANCEL_TOOL, "滴滴出行", ToolDomain.RIDE, CANCEL_TOOL, ToolRisk.AGENT_DECIDES),
+                object : AgentTool {
+                    override val definition = Tool(
+                        name = CANCEL_TOOL,
+                        description = CANCEL_TOOL,
+                        inputSchema = ToolSchema(properties = JsonObject(emptyMap())),
+                    )
+                    override suspend fun call(arguments: Map<String, Any?>): CallToolResult {
+                        calls++
+                        return CallToolResult(content = listOf(TextContent("取消成功")), isError = false)
+                    }
+                },
+            ))
+        }
+        val invoker = CatalogToolInvoker(catalog)
+
+        for (userText in listOf("确认取消", "好", "不是", "")) {
+            assertFalse(invoker.invoke(CANCEL_TOOL, mapOf("order_id" to "test"), ToolTurnContext(userText)).isError == true)
+        }
+        assertEquals(4, calls)
+    }
+
     private data class Fixture(val invoker: CatalogToolInvoker, val orderCalls: () -> Int)
 
     private fun fixture(): Fixture {
@@ -64,5 +90,6 @@ class DefaultToolPolicyTest {
 
     companion object {
         private const val ORDER_TOOL = "ride__taxi_create_order"
+        private const val CANCEL_TOOL = "ride__taxi_cancel_order"
     }
 }

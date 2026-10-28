@@ -213,7 +213,7 @@ class TravelToolEnvironment private constructor(
 
         private fun riskFor(domain: ToolDomain, name: String): ToolRisk = when {
             domain == ToolDomain.RIDE && name == "taxi_create_order" -> ToolRisk.EXPLICIT_RIDE_ORDER
-            domain == ToolDomain.RIDE && name == "taxi_cancel_order" -> ToolRisk.BLOCKED
+            domain == ToolDomain.RIDE && name == "taxi_cancel_order" -> ToolRisk.AGENT_DECIDES
             else -> ToolRisk.READ_ONLY
         }
 
